@@ -35,17 +35,17 @@ content pane navigation (back/forward/reload) and the Ctrl+Q quit shortcut.
 
 ## Test Checkpoint
 
-- [ ] `cargo build` completes without errors
-- [ ] `cargo clippy -- -D warnings` passes with no warnings
-- [ ] `cargo fmt -- --check` reports no formatting issues
-- [ ] `cargo test` passes (existing roundtrip test still works)
-- [ ] Ctrl+N opens Add Bookmark modal (even when content pane has focus)
-- [ ] Ctrl+Shift+N opens Add Folder modal
-- [ ] F1 or Ctrl+/ opens Help modal
-- [ ] Ctrl+Q quits the application
-- [ ] F5 reloads the content pane
-- [ ] Ctrl+[ navigates back, Ctrl+] navigates forward in content pane
-- [ ] Escape closes any open modal
+- [x] `cargo build` completes without errors
+- [x] `cargo clippy -- -D warnings` passes with no warnings
+- [x] `cargo fmt -- --check` reports no formatting issues
+- [x] `cargo test` passes (existing roundtrip test still works)
+- [x] Ctrl+N opens Add Bookmark modal (even when content pane has focus)
+- [x] Ctrl+Shift+N opens Add Folder modal
+- [x] F1 or Ctrl+/ opens Help modal
+- [x] Ctrl+Q quits the application
+- [x] F5 reloads the content pane
+- [x] Ctrl+[ navigates back, Ctrl+] navigates forward in content pane
+- [x] Escape closes any open modal
 
 ## Notes
 - Use Option A from the spec: handle keyboard events in tao, trigger sidebar JS via `evaluate_script`
