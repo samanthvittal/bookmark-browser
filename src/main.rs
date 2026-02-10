@@ -110,16 +110,20 @@ fn sidebar_html() -> String {
 <style>
   :root {
     --base: #1e1e2e;
+    --mantle: #181825;
+    --surface0: #313244;
     --text: #cdd6f4;
     --subtext: #a6adc8;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: var(--base);
+    background: var(--mantle);
     color: var(--text);
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 14px;
     padding: 16px;
+    border-right: 1px solid var(--surface0);
+    height: 100vh;
   }
   p { color: var(--subtext); }
 </style>
