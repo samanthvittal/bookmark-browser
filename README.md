@@ -59,6 +59,26 @@ cargo build --release
 
 Bookmarks are stored in `~/.config/bookmarks-browser/bookmarks.json` as pretty-printed JSON. On first launch, sample bookmarks are created automatically.
 
+## Upcoming Features
+
+- Drag-and-drop reordering of bookmarks and folders
+- Import/export bookmarks (HTML bookmark format or JSON)
+- Search/filter bar in sidebar (`Ctrl+F`)
+- Resizable sidebar width via drag handle
+- Tabs in content pane for opening multiple bookmarks
+- Favicon fetching and display next to bookmark names
+- Keyboard navigation within the sidebar tree (arrow keys)
+- Custom CSS injection for reader mode
+
+## Acknowledgements
+
+- [Claude Code](https://claude.ai/claude-code) — AI-assisted development throughout the project
+- [tao](https://github.com/nickel-org/tao) — cross-platform windowing library from the Tauri team
+- [wry](https://github.com/nickel-org/wry) — lightweight WebView rendering library
+- [serde](https://serde.rs/) — serialization/deserialization framework for Rust
+- [WebKitGTK](https://webkitgtk.org/) — web rendering engine used by wry on Linux
+- The Rust community for excellent documentation and tooling
+
 ## License
 
-[GPL-3.0](LICENSE)
+[MIT](LICENSE)
