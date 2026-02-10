@@ -148,12 +148,14 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 14px;
     height: 100vh;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     border-right: 1px solid var(--surface0);
   }}
   #tree {{
     padding: 8px 0;
-    padding-bottom: 48px;
+    flex: 1;
     overflow-y: auto;
   }}
   .folder-header {{
@@ -245,16 +247,12 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     color: var(--red);
   }}
   .bottom-bar {{
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     display: flex;
     background: var(--mantle);
     border-top: 1px solid var(--surface0);
     padding: 8px;
     gap: 8px;
-    z-index: 10;
+    flex-shrink: 0;
   }}
   .bar-btn {{
     flex: 1;
@@ -416,7 +414,7 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     <h3>Keyboard Shortcuts</h3>
     <table class="help-table">
       <tr><td class="help-key">Ctrl+N</td><td>Add bookmark</td></tr>
-      <tr><td class="help-key">Ctrl+Shift+N</td><td>Add folder</td></tr>
+      <tr><td class="help-key">Ctrl+G</td><td>Add folder</td></tr>
       <tr><td class="help-key">F5</td><td>Reload page</td></tr>
       <tr><td class="help-key">Ctrl+[</td><td>Navigate back</td></tr>
       <tr><td class="help-key">Ctrl+]</td><td>Navigate forward</td></tr>
@@ -730,22 +728,31 @@ fn main() {
 
     let content_builder = WebViewBuilder::new()
         .with_html(welcome_html())
-        .with_bounds(make_bounds(SIDEBAR_WIDTH, 0.0, w - SIDEBAR_WIDTH, h));
+        .with_bounds(make_bounds(SIDEBAR_WIDTH, 0.0, w - SIDEBAR_WIDTH, h))
+        .with_user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
 
     #[cfg(target_os = "linux")]
     let (sidebar, content) = {
         use gtk::prelude::*;
 
         let vbox = window.default_vbox().expect("Failed to get default vbox");
-        let fixed = gtk::Fixed::new();
-        fixed.show_all();
-        vbox.pack_start(&fixed, true, true, 0);
+        let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        vbox.pack_start(&hbox, true, true, 0);
+
+        let sidebar_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        sidebar_box.set_size_request(SIDEBAR_WIDTH as i32, -1);
+        hbox.pack_start(&sidebar_box, false, false, 0);
+
+        let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        hbox.pack_start(&content_box, true, true, 0);
+
+        hbox.show_all();
 
         let sidebar = sidebar_builder
-            .build_gtk(&fixed)
+            .build_gtk(&sidebar_box)
             .expect("Failed to create sidebar webview");
         let content = content_builder
-            .build_gtk(&fixed)
+            .build_gtk(&content_box)
             .expect("Failed to create content webview");
         (sidebar, content)
     };
@@ -782,12 +789,11 @@ fn main() {
                 ..
             } if key_event.state == ElementState::Pressed => {
                 let ctrl = modifiers.control_key();
-                let shift = modifiers.shift_key();
                 let key = &key_event.logical_key;
 
-                if ctrl && shift && *key == Key::Character("N") {
+                if ctrl && *key == Key::Character("g") {
                     let _ = sidebar.evaluate_script("showAddFolderModal()");
-                } else if ctrl && !shift && *key == Key::Character("n") {
+                } else if ctrl && *key == Key::Character("n") {
                     let _ = sidebar.evaluate_script("showAddBookmarkModal()");
                 } else if *key == Key::F1 || (ctrl && *key == Key::Character("/")) {
                     let _ = sidebar.evaluate_script("showHelpModal()");
