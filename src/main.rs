@@ -287,7 +287,7 @@ fn make_bounds(x: f64, y: f64, width: f64, height: f64) -> Rect {
 }
 
 fn main() {
-    let store = BookmarkStore::load();
+    let mut store = BookmarkStore::load();
     if let Err(e) = store.save() {
         eprintln!("Warning: could not save bookmarks: {e}");
     }
@@ -337,7 +337,7 @@ fn main() {
         .with_bounds(make_bounds(SIDEBAR_WIDTH, 0.0, w - SIDEBAR_WIDTH, h));
 
     #[cfg(target_os = "linux")]
-    let (_sidebar, content) = {
+    let (sidebar, content) = {
         use gtk::prelude::*;
 
         let vbox = window.default_vbox().expect("Failed to get default vbox");
@@ -355,7 +355,7 @@ fn main() {
     };
 
     #[cfg(not(target_os = "linux"))]
-    let (_sidebar, content) = {
+    let (sidebar, content) = {
         let sidebar = sidebar_builder
             .build_as_child(&window)
             .expect("Failed to create sidebar webview");
@@ -377,7 +377,7 @@ fn main() {
                 let w = new_size.width as f64 / scale;
                 let h = new_size.height as f64 / scale;
 
-                let _ = _sidebar.set_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h));
+                let _ = sidebar.set_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h));
                 let _ = content.set_bounds(make_bounds(SIDEBAR_WIDTH, 0.0, w - SIDEBAR_WIDTH, h));
             }
             Event::WindowEvent {
@@ -389,7 +389,15 @@ fn main() {
             Event::UserEvent(UserEvent::Navigate(url)) => {
                 let _ = content.load_url(&url);
             }
-            Event::UserEvent(_) => {}
+            Event::UserEvent(UserEvent::ToggleFolder(index)) => {
+                if let Some(folder) = store.folders.get_mut(index) {
+                    folder.expanded = !folder.expanded;
+                    let _ = store.save();
+                    if let Ok(json) = serde_json::to_string(&store.folders) {
+                        let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
+                    }
+                }
+            }
             _ => {}
         }
     });
