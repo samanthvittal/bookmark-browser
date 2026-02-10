@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#1e1e2e"/>
+  <!-- Bookmark ribbon shape -->
+  <path d="M40 24 h48 a4 4 0 0 1 4 4 v76 l-28 -16 l-28 16 V28 a4 4 0 0 1 4 -4z" fill="#89b4fa"/>
+  <!-- Inner fold line for depth -->
+  <path d="M64 84 l-24 14 V28 a4 4 0 0 1 4 -4 h20z" fill="#74c7ec" opacity="0.3"/>
+</svg>

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Bookmark Browser
+Comment=A lightweight two-pane bookmark browser
+Exec=bookmark-browser
+Icon=bookmark-browser
+Categories=Network;WebBrowser;Utility;
+Keywords=bookmarks;browser;web;
+Terminal=false
+StartupNotify=true
