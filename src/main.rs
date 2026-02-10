@@ -736,6 +736,53 @@ fn main() {
                     }
                 }
             }
+            Event::UserEvent(UserEvent::AddFolder(name)) => {
+                store.folders.push(Folder {
+                    name,
+                    expanded: true,
+                    bookmarks: vec![],
+                });
+                let _ = store.save();
+                if let Ok(json) = serde_json::to_string(&store.folders) {
+                    let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
+                }
+            }
+            Event::UserEvent(UserEvent::AddBookmark {
+                folder_index,
+                name,
+                url,
+            }) => {
+                if let Some(folder) = store.folders.get_mut(folder_index) {
+                    folder.bookmarks.push(Bookmark { name, url });
+                    let _ = store.save();
+                    if let Ok(json) = serde_json::to_string(&store.folders) {
+                        let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
+                    }
+                }
+            }
+            Event::UserEvent(UserEvent::DeleteBookmark {
+                folder_index,
+                bookmark_index,
+            }) => {
+                if let Some(folder) = store.folders.get_mut(folder_index) {
+                    if bookmark_index < folder.bookmarks.len() {
+                        folder.bookmarks.remove(bookmark_index);
+                        let _ = store.save();
+                        if let Ok(json) = serde_json::to_string(&store.folders) {
+                            let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
+                        }
+                    }
+                }
+            }
+            Event::UserEvent(UserEvent::DeleteFolder(index)) => {
+                if index < store.folders.len() {
+                    store.folders.remove(index);
+                    let _ = store.save();
+                    if let Ok(json) = serde_json::to_string(&store.folders) {
+                        let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
+                    }
+                }
+            }
             _ => {}
         }
     });
