@@ -428,11 +428,32 @@ fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
     padding-right: 12px;
     white-space: nowrap;
   }}
+  .sync-status {{
+    display: none;
+    padding: 6px 8px;
+    font-size: 11px;
+    border-top: 1px solid var(--surface0);
+    flex-shrink: 0;
+    text-align: center;
+    cursor: pointer;
+  }}
+  .sync-status.active {{
+    display: block;
+  }}
+  .sync-status.status-progress {{
+    color: var(--subtext);
+  }}
+  .sync-status.status-success {{
+    color: var(--green);
+  }}
+  .sync-status.status-error {{
+    color: var(--red);
+  }}
 </style>
 </head>
 <body>
 <div id="tree"></div>
-<div id="syncStatus" style="display:none;padding:4px 8px;font-size:11px;color:var(--subtext);border-top:1px solid var(--surface0);flex-shrink:0;text-align:center;"></div>
+<div id="syncStatus" class="sync-status"></div>
 <div class="bottom-bar" style="flex-wrap:wrap;">
   <button class="bar-btn" onclick="pushToGitHub()" title="Push to GitHub (Ctrl+U)">\u2191 Push</button>
   <button class="bar-btn" onclick="pullFromGitHub()" title="Pull from GitHub (Ctrl+I)">\u2193 Pull</button>
@@ -702,13 +723,27 @@ fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
     window.ipc.postMessage(JSON.stringify({{ action: 'pull_from_github' }}));
   }}
 
-  function updateSyncStatus(msg) {{
+  let syncTimer = null;
+
+  function updateSyncStatus(msg, type) {{
     var el = document.getElementById('syncStatus');
+    if (syncTimer) {{ clearTimeout(syncTimer); syncTimer = null; }}
+    el.className = 'sync-status';
     if (msg) {{
       el.textContent = msg;
-      el.style.display = 'block';
+      if (!type) {{
+        if (msg.indexOf('successfully') !== -1 || msg.indexOf('Last synced') !== -1) type = 'success';
+        else if (msg.indexOf('failed') !== -1 || msg.indexOf('error') !== -1 || msg.indexOf('No token') !== -1 || msg.indexOf('No gist') !== -1 || msg.indexOf('not found') !== -1) type = 'error';
+        else type = 'progress';
+      }}
+      el.classList.add('active', 'status-' + type);
+      if (type === 'success') {{
+        syncTimer = setTimeout(function() {{ el.classList.remove('active'); }}, 5000);
+      }} else if (type === 'error') {{
+        syncTimer = setTimeout(function() {{ el.classList.remove('active'); }}, 8000);
+      }}
     }} else {{
-      el.style.display = 'none';
+      el.classList.remove('active');
     }}
   }}
 
@@ -720,6 +755,10 @@ fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
       if (activeModal === 'addBookmark') submitAddBookmark();
       else if (activeModal === 'addFolder') submitAddFolder();
     }}
+  }});
+
+  document.getElementById('syncStatus').addEventListener('click', function() {{
+    updateSyncStatus(null);
   }});
 
   renderBookmarks(folders);
@@ -821,6 +860,18 @@ fn strip_html() -> String {
         .to_string()
 }
 
+fn format_ureq_error(e: ureq::Error) -> String {
+    match e {
+        ureq::Error::StatusCode(401) => "Invalid or expired GitHub token".to_string(),
+        ureq::Error::StatusCode(404) => "Gist not found — it may have been deleted".to_string(),
+        ureq::Error::StatusCode(code) => format!("GitHub API error (HTTP {code})"),
+        ureq::Error::Timeout(_) => "Request timed out — try again".to_string(),
+        ureq::Error::HostNotFound => "Could not reach GitHub — check your connection".to_string(),
+        ureq::Error::ConnectionFailed => "Connection failed — check your connection".to_string(),
+        _ => format!("{e}"),
+    }
+}
+
 fn do_push(token: &str, gist_id: &str, bookmarks_json: &str) -> Result<String, String> {
     let payload = serde_json::json!({
         "description": "Bookmarks Browser sync",
@@ -851,19 +902,20 @@ fn do_push(token: &str, gist_id: &str, bookmarks_json: &str) -> Result<String, S
             .header("User-Agent", "bookmarks-browser")
             .send_json(&payload)
     }
-    .map_err(|e| format!("{e}"))?;
+    .map_err(format_ureq_error)?;
 
     let body = response
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("{e}"))?;
-    let parsed: serde_json::Value = serde_json::from_str(&body).map_err(|e| format!("{e}"))?;
+        .map_err(|e| format!("Failed to read response: {e}"))?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&body).map_err(|_| "Malformed response from GitHub".to_string())?;
 
     parsed
         .get("id")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
-        .ok_or_else(|| "Missing gist ID in response".to_string())
+        .ok_or_else(|| "Malformed response from GitHub".to_string())
 }
 
 fn do_pull(token: &str, gist_id: &str) -> Result<BookmarkStore, String> {
@@ -876,13 +928,14 @@ fn do_pull(token: &str, gist_id: &str) -> Result<BookmarkStore, String> {
         .header("Accept", "application/vnd.github+json")
         .header("User-Agent", "bookmarks-browser")
         .call()
-        .map_err(|e| format!("{e}"))?;
+        .map_err(format_ureq_error)?;
 
     let body = response
         .body_mut()
         .read_to_string()
-        .map_err(|e| format!("{e}"))?;
-    let parsed: serde_json::Value = serde_json::from_str(&body).map_err(|e| format!("{e}"))?;
+        .map_err(|e| format!("Failed to read response: {e}"))?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&body).map_err(|_| "Malformed response from GitHub".to_string())?;
 
     let content = parsed
         .get("files")
