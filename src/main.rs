@@ -20,6 +20,7 @@ use wry::WebViewBuilderExtUnix;
 const SIDEBAR_WIDTH: f64 = 280.0;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum UserEvent {
     Navigate(String),
     ToggleFolder(usize),
