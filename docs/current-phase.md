@@ -1,43 +1,46 @@
-# Current Phase: 1 — Project Bootstrap
+# Current Phase: 2 — Data Model & Persistence
 
-## Status: COMPLETE
+## Status: NOT STARTED
 
 ## Phase Dependencies
-- None (starting point)
+- Phase 1 — Project Bootstrap (complete)
 
 ## Context
-This is the very first phase. We are bootstrapping the Rust project from scratch.
-No code exists yet. After this phase, we will have a compilable Cargo project with
-the correct structure, dependencies, and a minimal `main.rs` that opens a tao window.
+Phase 1 gave us a compilable Cargo project with a tao window. Now we need the data
+layer: Rust structs for bookmarks/folders, JSON persistence to `~/.config/bookmarks-browser/bookmarks.json`,
+and sample data for first run. This phase touches only `src/main.rs` — no WebViews or UI yet.
 
-## Key Files to Create
-- `Cargo.toml` — project manifest with all dependencies
-- `src/main.rs` — minimal entry point that opens a tao window and runs the event loop
-- `.gitignore` — Rust-specific ignores
+## Key Files
+- `src/main.rs` — will add structs, persistence functions, and load store on startup
+- `Cargo.toml` — already has `serde`, `serde_json`, `dirs` dependencies (no changes needed)
 
 ## Tasks
 
-- [x] **1.1** — Create `Cargo.toml` with all dependencies: `wry` (0.47+), `tao` (0.31+), `serde` (with derive), `serde_json`, `dirs` (6+). Include release profile with `opt-level = 3`, `lto = true`, `strip = true`
-- [x] **1.2** — Create `.gitignore` for Rust projects (`/target`, `Cargo.lock` if library — but keep it since this is a binary, `*.swp`, etc.)
-- [x] **1.3** — Create `src/main.rs` with a minimal tao event loop that opens a 1200x800 window titled "Bookmarks Browser" and handles `CloseRequested` to exit cleanly
-- [x] **1.4** — Verify the project compiles and runs: `cargo build` succeeds, `cargo clippy -- -D warnings` passes, `cargo fmt -- --check` passes
+- [ ] **2.1** — Define `Bookmark`, `Folder`, `BookmarkStore` structs with serde derives (`Serialize`, `Deserialize`, `Clone`, `Debug`)
+- [ ] **2.2** — Implement `default_true()` helper for `Folder.expanded` serde default
+- [ ] **2.3** — Implement `default_store()` returning a `BookmarkStore` with sample bookmarks (Documentation folder with Rust/Arch Wiki links, News folder with Hacker News)
+- [ ] **2.4** — Implement `config_path()` using `dirs::config_dir()` returning `~/.config/bookmarks-browser/bookmarks.json`
+- [ ] **2.5** — Implement `BookmarkStore::load()` — read from config path, fallback to `default_store()` if file missing or invalid
+- [ ] **2.6** — Implement `BookmarkStore::save()` — write pretty JSON to config path, create parent dirs if needed
+- [ ] **2.7** — Unit test: roundtrip `save()` then `load()` produces identical data
 
 ## Test Checkpoint
 
-After completing all tasks, manually verify each item:
-
-- [x] `cargo build` completes without errors
-- [x] `cargo clippy -- -D warnings` passes with no warnings
-- [x] `cargo fmt -- --check` reports no formatting issues
-- [x] Running `cargo run` opens a native window titled "Bookmarks Browser" at approximately 1200x800 size
-- [x] Closing the window exits the process cleanly (no zombie process)
+- [ ] `cargo build` completes without errors
+- [ ] `cargo clippy -- -D warnings` passes with no warnings
+- [ ] `cargo fmt -- --check` reports no formatting issues
+- [ ] `cargo test` passes — roundtrip test verifies save/load consistency
+- [ ] Running `cargo run` still opens the window (no regression)
+- [ ] After first run, `~/.config/bookmarks-browser/bookmarks.json` exists with sample data
 
 ## Notes
-- System dependency required: `webkit2gtk-4.1` (install via `sudo pacman -S webkit2gtk-4.1` on Arch)
-- The window will be empty at this stage — just proving tao works
-- Do NOT add wry WebViews yet — that comes in Phase 3
+- Keep everything in `src/main.rs` for now — the file is still small
+- Use `Result<T, Box<dyn std::error::Error>>` for persistence functions
+- Use `serde_json::to_string_pretty` for human-readable JSON output
+- The `load()` function should silently fall back to defaults on any error (missing file, invalid JSON)
+- The unit test should use a temp directory (via `std::env::temp_dir()`) to avoid touching real config
 
 ---
 
 ## Completed Phases
-(none yet)
+- Phase 1 — Project Bootstrap (completed 2026-02-10)
