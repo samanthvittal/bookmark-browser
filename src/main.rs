@@ -18,11 +18,13 @@ use tao::platform::unix::WindowExtUnix;
 use wry::WebViewBuilderExtUnix;
 
 const SIDEBAR_WIDTH: f64 = 280.0;
+const STRIP_WIDTH: f64 = 28.0;
 
 #[derive(Debug)]
 enum UserEvent {
     Navigate(String),
     ToggleFolder(usize),
+    ToggleSidebar,
     AddFolder(String),
     AddBookmark {
         folder_index: usize,
@@ -379,6 +381,7 @@ fn sidebar_html(store: &BookmarkStore) -> String {
 <div class="bottom-bar">
   <button class="bar-btn" onclick="showAddFolderModal()">+ Folder</button>
   <button class="bar-btn" onclick="showHelpModal()">? Help</button>
+  <button class="bar-btn" onclick="collapseSidebar()" title="Collapse sidebar (Ctrl+B)">&laquo;</button>
 </div>
 
 <div id="addBookmarkOverlay" class="modal-overlay">
@@ -574,6 +577,10 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     closeModals();
   }}
 
+  function collapseSidebar() {{
+    window.ipc.postMessage(JSON.stringify({{ action: 'toggle_sidebar' }}));
+  }}
+
   document.addEventListener('keydown', function(e) {{
     if (e.key === 'Escape') {{
       closeModals();
@@ -639,6 +646,48 @@ fn welcome_html() -> String {
         .to_string()
 }
 
+fn strip_html() -> String {
+    r#"<!DOCTYPE html>
+<html>
+<head>
+<style>
+  :root {
+    --mantle: #181825;
+    --surface0: #313244;
+    --text: #cdd6f4;
+    --accent: #cba6f7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--mantle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    border-right: 1px solid var(--surface0);
+  }
+  button {
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  button:hover {
+    background: var(--surface0);
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+  <button onclick="window.ipc.postMessage(JSON.stringify({action:'toggle_sidebar'}))" title="Expand sidebar (Ctrl+B)">&raquo;</button>
+</body>
+</html>"#
+        .to_string()
+}
+
 fn make_bounds(x: f64, y: f64, width: f64, height: f64) -> Rect {
     Rect {
         position: LogicalPosition::new(x, y).into(),
@@ -654,6 +703,8 @@ fn main() {
 
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let proxy = event_loop.create_proxy();
+    #[cfg(target_os = "linux")]
+    let strip_proxy = proxy.clone();
 
     let window = WindowBuilder::new()
         .with_title("Bookmarks Browser")
@@ -687,6 +738,9 @@ fn main() {
                     if let Some(index) = msg.get("folder_index").and_then(|i| i.as_u64()) {
                         let _ = proxy.send_event(UserEvent::ToggleFolder(index as usize));
                     }
+                }
+                "toggle_sidebar" => {
+                    let _ = proxy.send_event(UserEvent::ToggleSidebar);
                 }
                 "add_folder" => {
                     if let Some(name) = msg.get("name").and_then(|n| n.as_str()) {
@@ -732,12 +786,29 @@ fn main() {
         .with_user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
 
     #[cfg(target_os = "linux")]
-    let (sidebar, content) = {
+    let strip_builder = WebViewBuilder::new()
+        .with_html(strip_html())
+        .with_bounds(make_bounds(0.0, 0.0, STRIP_WIDTH, h))
+        .with_ipc_handler(move |req: wry::http::Request<String>| {
+            let body = req.body();
+            if let Ok(msg) = serde_json::from_str::<serde_json::Value>(body) {
+                if msg.get("action").and_then(|a| a.as_str()) == Some("toggle_sidebar") {
+                    let _ = strip_proxy.send_event(UserEvent::ToggleSidebar);
+                }
+            }
+        });
+
+    #[cfg(target_os = "linux")]
+    let (sidebar, content, sidebar_gtk_box, strip_gtk_box, _strip_wv) = {
         use gtk::prelude::*;
 
         let vbox = window.default_vbox().expect("Failed to get default vbox");
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         vbox.pack_start(&hbox, true, true, 0);
+
+        let strip_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        strip_box.set_size_request(STRIP_WIDTH as i32, -1);
+        hbox.pack_start(&strip_box, false, false, 0);
 
         let sidebar_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
         sidebar_box.set_size_request(SIDEBAR_WIDTH as i32, -1);
@@ -747,14 +818,18 @@ fn main() {
         hbox.pack_start(&content_box, true, true, 0);
 
         hbox.show_all();
+        strip_box.hide();
 
+        let strip = strip_builder
+            .build_gtk(&strip_box)
+            .expect("Failed to create strip webview");
         let sidebar = sidebar_builder
             .build_gtk(&sidebar_box)
             .expect("Failed to create sidebar webview");
         let content = content_builder
             .build_gtk(&content_box)
             .expect("Failed to create content webview");
-        (sidebar, content)
+        (sidebar, content, sidebar_box, strip_box, strip)
     };
 
     #[cfg(not(target_os = "linux"))]
@@ -769,9 +844,14 @@ fn main() {
     };
 
     let mut modifiers = ModifiersState::empty();
+    let mut sidebar_collapsed = false;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
+
+        // Keep strip webview alive in the closure
+        #[cfg(target_os = "linux")]
+        let _ = &_strip_wv;
 
         match event {
             Event::WindowEvent {
@@ -791,7 +871,39 @@ fn main() {
                 let ctrl = modifiers.control_key();
                 let key = &key_event.logical_key;
 
-                if ctrl && *key == Key::Character("g") {
+                if ctrl && *key == Key::Character("b") {
+                    sidebar_collapsed = !sidebar_collapsed;
+                    #[cfg(target_os = "linux")]
+                    {
+                        use gtk::prelude::*;
+                        if sidebar_collapsed {
+                            sidebar_gtk_box.hide();
+                            strip_gtk_box.show_all();
+                        } else {
+                            strip_gtk_box.hide();
+                            sidebar_gtk_box.show_all();
+                        }
+                    }
+                    #[cfg(not(target_os = "linux"))]
+                    {
+                        let scale = window.scale_factor();
+                        let inner = window.inner_size();
+                        let w = inner.width as f64 / scale;
+                        let h = inner.height as f64 / scale;
+                        if sidebar_collapsed {
+                            let _ = sidebar.set_bounds(make_bounds(0.0, 0.0, 0.0, h));
+                            let _ = content.set_bounds(make_bounds(0.0, 0.0, w, h));
+                        } else {
+                            let _ = sidebar.set_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h));
+                            let _ = content.set_bounds(make_bounds(
+                                SIDEBAR_WIDTH,
+                                0.0,
+                                w - SIDEBAR_WIDTH,
+                                h,
+                            ));
+                        }
+                    }
+                } else if ctrl && *key == Key::Character("g") {
                     let _ = sidebar.evaluate_script("showAddFolderModal()");
                 } else if ctrl && *key == Key::Character("n") {
                     let _ = sidebar.evaluate_script("showAddBookmarkModal()");
@@ -817,8 +929,14 @@ fn main() {
                 let w = new_size.width as f64 / scale;
                 let h = new_size.height as f64 / scale;
 
-                let _ = sidebar.set_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h));
-                let _ = content.set_bounds(make_bounds(SIDEBAR_WIDTH, 0.0, w - SIDEBAR_WIDTH, h));
+                if sidebar_collapsed {
+                    let _ = sidebar.set_bounds(make_bounds(0.0, 0.0, 0.0, h));
+                    let _ = content.set_bounds(make_bounds(0.0, 0.0, w, h));
+                } else {
+                    let _ = sidebar.set_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h));
+                    let _ =
+                        content.set_bounds(make_bounds(SIDEBAR_WIDTH, 0.0, w - SIDEBAR_WIDTH, h));
+                }
             }
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
@@ -828,6 +946,39 @@ fn main() {
             }
             Event::UserEvent(UserEvent::Navigate(url)) => {
                 let _ = content.load_url(&url);
+            }
+            Event::UserEvent(UserEvent::ToggleSidebar) => {
+                sidebar_collapsed = !sidebar_collapsed;
+                #[cfg(target_os = "linux")]
+                {
+                    use gtk::prelude::*;
+                    if sidebar_collapsed {
+                        sidebar_gtk_box.hide();
+                        strip_gtk_box.show_all();
+                    } else {
+                        strip_gtk_box.hide();
+                        sidebar_gtk_box.show_all();
+                    }
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    let scale = window.scale_factor();
+                    let inner = window.inner_size();
+                    let w = inner.width as f64 / scale;
+                    let h = inner.height as f64 / scale;
+                    if sidebar_collapsed {
+                        let _ = sidebar.set_bounds(make_bounds(0.0, 0.0, 0.0, h));
+                        let _ = content.set_bounds(make_bounds(0.0, 0.0, w, h));
+                    } else {
+                        let _ = sidebar.set_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h));
+                        let _ = content.set_bounds(make_bounds(
+                            SIDEBAR_WIDTH,
+                            0.0,
+                            w - SIDEBAR_WIDTH,
+                            h,
+                        ));
+                    }
+                }
             }
             Event::UserEvent(UserEvent::ToggleFolder(index)) => {
                 if let Some(folder) = store.folders.get_mut(index) {
