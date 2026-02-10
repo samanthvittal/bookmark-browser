@@ -23,18 +23,18 @@ when the window is resized. This is the first phase that uses `wry`.
 - [x] **3.2** — Create sidebar WebView with placeholder HTML ("Sidebar placeholder") using `WebViewBuilder`
 - [x] **3.3** — Create content WebView with welcome page HTML (centered "Select a bookmark" message, dark theme using Catppuccin Mocha palette)
 - [x] **3.4** — Handle `WindowEvent::Resized` — recalculate and call `set_bounds()` on both webviews
-- [ ] **3.5** — Verify both panes render and resize correctly (manual visual check)
+- [x] **3.5** — Verify both panes render and resize correctly (manual visual check)
 
 ## Test Checkpoint
 
-- [ ] `cargo build` completes without errors
-- [ ] `cargo clippy -- -D warnings` passes with no warnings
-- [ ] `cargo fmt -- --check` reports no formatting issues
-- [ ] `cargo test` passes (existing roundtrip test still works)
-- [ ] Running `cargo run` shows two panes side by side: sidebar (280px) and content pane
-- [ ] Sidebar shows "Sidebar placeholder" text
-- [ ] Content pane shows centered "Select a bookmark" welcome message with dark theme
-- [ ] Resizing the window correctly repositions and resizes both panes
+- [x] `cargo build` completes without errors
+- [x] `cargo clippy -- -D warnings` passes with no warnings
+- [x] `cargo fmt -- --check` reports no formatting issues
+- [x] `cargo test` passes (existing roundtrip test still works)
+- [x] Running `cargo run` shows two panes side by side: sidebar (280px) and content pane
+- [x] Sidebar shows "Sidebar placeholder" text
+- [x] Content pane shows centered "Select a bookmark" welcome message with dark theme
+- [x] Resizing the window correctly repositions and resizes both panes
 
 ## Notes
 - Use `WebViewBuilder::new_as_child(&window)` to create child webviews within the tao window
