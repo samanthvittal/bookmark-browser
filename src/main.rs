@@ -22,6 +22,17 @@ const SIDEBAR_WIDTH: f64 = 280.0;
 enum UserEvent {
     Navigate(String),
     ToggleFolder(usize),
+    AddFolder(String),
+    AddBookmark {
+        folder_index: usize,
+        name: String,
+        url: String,
+    },
+    DeleteBookmark {
+        folder_index: usize,
+        bookmark_index: usize,
+    },
+    DeleteFolder(usize),
 }
 
 fn default_true() -> bool {
