@@ -83,6 +83,7 @@ dependencies = [
 name = "bookmarks-browser"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "dirs",
  "gtk",
  "serde",
