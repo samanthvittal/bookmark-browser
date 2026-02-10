@@ -1,6 +1,6 @@
 # Current Phase: 6 — Keyboard Shortcuts
 
-## Status: NOT STARTED
+## Status: COMPLETE
 
 ## Phase Dependencies
 - Phase 1 — Project Bootstrap (complete)
@@ -21,17 +21,17 @@ content pane navigation (back/forward/reload) and the Ctrl+Q quit shortcut.
 
 ## Tasks
 
-- [ ] **6.1** — Add `ReloadContent`, `GoBack`, `GoForward` variants to `UserEvent` enum
-- [ ] **6.2** — Track `ModifiersState` in the event loop by handling `WindowEvent::ModifiersChanged`
-- [ ] **6.3** — Handle `WindowEvent::KeyboardInput` — match virtual key codes with modifier state to dispatch shortcuts
-- [ ] **6.4** — Implement Ctrl+N → `sidebar.evaluate_script("showAddBookmarkModal()")` to open Add Bookmark modal
-- [ ] **6.5** — Implement Ctrl+Shift+N → `sidebar.evaluate_script("showAddFolderModal()")` to open Add Folder modal
-- [ ] **6.6** — Implement F1 and Ctrl+/ → `sidebar.evaluate_script("showHelpModal()")` to open Help modal
-- [ ] **6.7** — Implement Ctrl+Q → set `ControlFlow::Exit` to quit
-- [ ] **6.8** — Implement F5 → send `ReloadContent` event, handle by calling `content.evaluate_script("location.reload()")`
-- [ ] **6.9** — Implement Ctrl+[ → send `GoBack` event, handle by calling `content.evaluate_script("history.back()")`
-- [ ] **6.10** — Implement Ctrl+] → send `GoForward` event, handle by calling `content.evaluate_script("history.forward()")`
-- [ ] **6.11** — Implement Escape → `sidebar.evaluate_script("closeModals()")` to close any open modal
+- [x] **6.1** — Add `ReloadContent`, `GoBack`, `GoForward` variants to `UserEvent` enum
+- [x] **6.2** — Track `ModifiersState` in the event loop by handling `WindowEvent::ModifiersChanged`
+- [x] **6.3** — Handle `WindowEvent::KeyboardInput` — match virtual key codes with modifier state to dispatch shortcuts
+- [x] **6.4** — Implement Ctrl+N → `sidebar.evaluate_script("showAddBookmarkModal()")` to open Add Bookmark modal
+- [x] **6.5** — Implement Ctrl+Shift+N → `sidebar.evaluate_script("showAddFolderModal()")` to open Add Folder modal
+- [x] **6.6** — Implement F1 and Ctrl+/ → `sidebar.evaluate_script("showHelpModal()")` to open Help modal
+- [x] **6.7** — Implement Ctrl+Q → set `ControlFlow::Exit` to quit
+- [x] **6.8** — Implement F5 → send `ReloadContent` event, handle by calling `content.evaluate_script("location.reload()")`
+- [x] **6.9** — Implement Ctrl+[ → send `GoBack` event, handle by calling `content.evaluate_script("history.back()")`
+- [x] **6.10** — Implement Ctrl+] → send `GoForward` event, handle by calling `content.evaluate_script("history.forward()")`
+- [x] **6.11** — Implement Escape → `sidebar.evaluate_script("closeModals()")` to close any open modal
 
 ## Test Checkpoint
 
