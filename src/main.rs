@@ -40,6 +40,11 @@ enum UserEvent {
         github_token: String,
         github_gist_id: String,
     },
+    PushToGitHub,
+    PullFromGitHub,
+    SyncStatus(String),
+    PushComplete(String),
+    PullComplete(BookmarkStore),
 }
 
 fn default_true() -> bool {
@@ -427,7 +432,10 @@ fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
 </head>
 <body>
 <div id="tree"></div>
-<div class="bottom-bar">
+<div id="syncStatus" style="display:none;padding:4px 8px;font-size:11px;color:var(--subtext);border-top:1px solid var(--surface0);flex-shrink:0;text-align:center;"></div>
+<div class="bottom-bar" style="flex-wrap:wrap;">
+  <button class="bar-btn" onclick="pushToGitHub()" title="Push to GitHub (Ctrl+U)">\u2191 Push</button>
+  <button class="bar-btn" onclick="pullFromGitHub()" title="Pull from GitHub (Ctrl+I)">\u2193 Pull</button>
   <button class="bar-btn" onclick="showAddFolderModal()">+ Folder</button>
   <button class="bar-btn" onclick="showSettingsModal()" title="Settings">\u2699</button>
   <button class="bar-btn" onclick="showHelpModal()">? Help</button>
@@ -686,6 +694,24 @@ fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
     savedGistId = gistId;
   }}
 
+  function pushToGitHub() {{
+    window.ipc.postMessage(JSON.stringify({{ action: 'push_to_github' }}));
+  }}
+
+  function pullFromGitHub() {{
+    window.ipc.postMessage(JSON.stringify({{ action: 'pull_from_github' }}));
+  }}
+
+  function updateSyncStatus(msg) {{
+    var el = document.getElementById('syncStatus');
+    if (msg) {{
+      el.textContent = msg;
+      el.style.display = 'block';
+    }} else {{
+      el.style.display = 'none';
+    }}
+  }}
+
   document.addEventListener('keydown', function(e) {{
     if (e.key === 'Escape') {{
       closeModals();
@@ -795,6 +821,80 @@ fn strip_html() -> String {
         .to_string()
 }
 
+fn do_push(token: &str, gist_id: &str, bookmarks_json: &str) -> Result<String, String> {
+    let payload = serde_json::json!({
+        "description": "Bookmarks Browser sync",
+        "public": false,
+        "files": {
+            "bookmarks.json": {
+                "content": bookmarks_json
+            }
+        }
+    });
+
+    let agent = ureq::Agent::new_with_defaults();
+    let auth = format!("token {token}");
+
+    let mut response = if gist_id.is_empty() {
+        agent
+            .post("https://api.github.com/gists")
+            .header("Authorization", &auth)
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "bookmarks-browser")
+            .send_json(&payload)
+    } else {
+        let url = format!("https://api.github.com/gists/{gist_id}");
+        agent
+            .patch(&url)
+            .header("Authorization", &auth)
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "bookmarks-browser")
+            .send_json(&payload)
+    }
+    .map_err(|e| format!("{e}"))?;
+
+    let body = response
+        .body_mut()
+        .read_to_string()
+        .map_err(|e| format!("{e}"))?;
+    let parsed: serde_json::Value = serde_json::from_str(&body).map_err(|e| format!("{e}"))?;
+
+    parsed
+        .get("id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| "Missing gist ID in response".to_string())
+}
+
+fn do_pull(token: &str, gist_id: &str) -> Result<BookmarkStore, String> {
+    let url = format!("https://api.github.com/gists/{gist_id}");
+    let agent = ureq::Agent::new_with_defaults();
+
+    let mut response = agent
+        .get(&url)
+        .header("Authorization", &format!("token {token}"))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "bookmarks-browser")
+        .call()
+        .map_err(|e| format!("{e}"))?;
+
+    let body = response
+        .body_mut()
+        .read_to_string()
+        .map_err(|e| format!("{e}"))?;
+    let parsed: serde_json::Value = serde_json::from_str(&body).map_err(|e| format!("{e}"))?;
+
+    let content = parsed
+        .get("files")
+        .and_then(|f| f.get("bookmarks.json"))
+        .and_then(|f| f.get("content"))
+        .and_then(|c| c.as_str())
+        .ok_or_else(|| "bookmarks.json not found in gist".to_string())?;
+
+    serde_json::from_str::<BookmarkStore>(content)
+        .map_err(|e| format!("Failed to parse bookmarks: {e}"))
+}
+
 fn make_bounds(x: f64, y: f64, width: f64, height: f64) -> Rect {
     Rect {
         position: LogicalPosition::new(x, y).into(),
@@ -886,6 +986,12 @@ fn main() {
                         let _ = proxy.send_event(UserEvent::DeleteFolder(index as usize));
                     }
                 }
+                "push_to_github" => {
+                    let _ = proxy.send_event(UserEvent::PushToGitHub);
+                }
+                "pull_from_github" => {
+                    let _ = proxy.send_event(UserEvent::PullFromGitHub);
+                }
                 "save_settings" => {
                     let token = msg
                         .get("github_token")
@@ -973,6 +1079,8 @@ fn main() {
         (sidebar, content)
     };
 
+    let sync_proxy = event_loop.create_proxy();
+
     let mut modifiers = ModifiersState::empty();
     let mut sidebar_collapsed = initial_collapsed;
 
@@ -1035,6 +1143,10 @@ fn main() {
                             ));
                         }
                     }
+                } else if ctrl && *key == Key::Character("u") {
+                    let _ = sync_proxy.send_event(UserEvent::PushToGitHub);
+                } else if ctrl && *key == Key::Character("i") {
+                    let _ = sync_proxy.send_event(UserEvent::PullFromGitHub);
                 } else if ctrl && *key == Key::Character("g") {
                     let _ = sidebar.evaluate_script("showAddFolderModal()");
                 } else if ctrl && *key == Key::Character("n") {
@@ -1184,6 +1296,74 @@ fn main() {
                 let gist_id = &settings.github_gist_id;
                 let _ =
                     sidebar.evaluate_script(&format!("updateSettings({has_token}, '{gist_id}')"));
+            }
+            Event::UserEvent(UserEvent::PushToGitHub) => {
+                if settings.github_token.is_empty() {
+                    let _ = sidebar
+                        .evaluate_script("updateSyncStatus('No token configured — open Settings')");
+                    return;
+                }
+                let token = settings.github_token.clone();
+                let gist_id = settings.github_gist_id.clone();
+                let bookmarks_json = serde_json::to_string_pretty(&store).unwrap_or_default();
+                let proxy = sync_proxy.clone();
+                let _ = sidebar.evaluate_script("updateSyncStatus('Pushing...')");
+                std::thread::spawn(move || match do_push(&token, &gist_id, &bookmarks_json) {
+                    Ok(new_gist_id) => {
+                        let _ = proxy.send_event(UserEvent::PushComplete(new_gist_id));
+                    }
+                    Err(e) => {
+                        let _ =
+                            proxy.send_event(UserEvent::SyncStatus(format!("Push failed: {e}")));
+                    }
+                });
+            }
+            Event::UserEvent(UserEvent::PullFromGitHub) => {
+                if settings.github_token.is_empty() {
+                    let _ = sidebar
+                        .evaluate_script("updateSyncStatus('No token configured — open Settings')");
+                    return;
+                }
+                if settings.github_gist_id.is_empty() {
+                    let _ = sidebar.evaluate_script(
+                        "updateSyncStatus('No gist ID — push first to create one')",
+                    );
+                    return;
+                }
+                let token = settings.github_token.clone();
+                let gist_id = settings.github_gist_id.clone();
+                let proxy = sync_proxy.clone();
+                let _ = sidebar.evaluate_script("updateSyncStatus('Pulling...')");
+                std::thread::spawn(move || match do_pull(&token, &gist_id) {
+                    Ok(new_store) => {
+                        let _ = proxy.send_event(UserEvent::PullComplete(new_store));
+                    }
+                    Err(e) => {
+                        let _ =
+                            proxy.send_event(UserEvent::SyncStatus(format!("Pull failed: {e}")));
+                    }
+                });
+            }
+            Event::UserEvent(UserEvent::SyncStatus(msg)) => {
+                let escaped = msg.replace('\\', "\\\\").replace('\'', "\\'");
+                let _ = sidebar.evaluate_script(&format!("updateSyncStatus('{escaped}')"));
+            }
+            Event::UserEvent(UserEvent::PushComplete(new_gist_id)) => {
+                settings.github_gist_id = new_gist_id;
+                let _ = settings.save();
+                let has_token = !settings.github_token.is_empty();
+                let gist_id = &settings.github_gist_id;
+                let _ =
+                    sidebar.evaluate_script(&format!("updateSettings({has_token}, '{gist_id}')"));
+                let _ = sidebar.evaluate_script("updateSyncStatus('Pushed successfully')");
+            }
+            Event::UserEvent(UserEvent::PullComplete(new_store)) => {
+                store = new_store;
+                let _ = store.save();
+                if let Ok(json) = serde_json::to_string(&store.folders) {
+                    let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
+                }
+                let _ = sidebar.evaluate_script("updateSyncStatus('Pulled successfully')");
             }
             _ => {}
         }
