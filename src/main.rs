@@ -132,9 +132,13 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     --mantle: #181825;
     --surface0: #313244;
     --surface1: #45475a;
+    --surface2: #585b70;
     --text: #cdd6f4;
     --subtext: #a6adc8;
     --accent: #89b4fa;
+    --red: #f38ba8;
+    --green: #a6e3a1;
+    --overlay: rgba(0, 0, 0, 0.5);
   }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{
@@ -143,10 +147,13 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 14px;
     height: 100vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     border-right: 1px solid var(--surface0);
   }}
   #tree {{
+    flex: 1;
+    overflow-y: auto;
     padding: 8px 0;
   }}
   .folder-header {{
@@ -170,15 +177,43 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     font-size: 10px;
     color: var(--subtext);
   }}
+  .folder-name {{
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }}
+  .folder-actions {{
+    display: none;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+  }}
+  .folder-header:hover .folder-actions {{
+    display: flex;
+  }}
+  .icon-btn {{
+    background: none;
+    border: none;
+    color: var(--subtext);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+    line-height: 1;
+  }}
+  .icon-btn:hover {{
+    color: var(--text);
+  }}
+  .icon-btn.delete:hover {{
+    color: var(--red);
+  }}
   .bookmark {{
-    display: block;
+    display: flex;
+    align-items: center;
     padding: 6px 12px 6px 32px;
     color: var(--text);
     text-decoration: none;
     cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }}
   .bookmark:hover {{
     background: var(--surface0);
@@ -187,13 +222,165 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     background: var(--surface0);
     color: var(--accent);
   }}
+  .bookmark-name {{
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }}
+  .bookmark .delete-btn {{
+    display: none;
+    background: none;
+    border: none;
+    color: var(--subtext);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+    line-height: 1;
+  }}
+  .bookmark:hover .delete-btn {{
+    display: inline;
+  }}
+  .bookmark .delete-btn:hover {{
+    color: var(--red);
+  }}
+  .bottom-bar {{
+    display: flex;
+    border-top: 1px solid var(--surface0);
+    padding: 8px;
+    gap: 8px;
+  }}
+  .bar-btn {{
+    flex: 1;
+    background: var(--surface0);
+    border: none;
+    color: var(--subtext);
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+  }}
+  .bar-btn:hover {{
+    background: var(--surface1);
+    color: var(--text);
+  }}
+  .modal-overlay {{
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--overlay);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }}
+  .modal-overlay.active {{
+    display: flex;
+  }}
+  .modal {{
+    background: var(--base);
+    border: 1px solid var(--surface1);
+    border-radius: 8px;
+    padding: 20px;
+    width: 240px;
+  }}
+  .modal h3 {{
+    font-size: 14px;
+    margin-bottom: 12px;
+    color: var(--text);
+  }}
+  .modal label {{
+    display: block;
+    font-size: 12px;
+    color: var(--subtext);
+    margin-bottom: 4px;
+  }}
+  .modal input, .modal select {{
+    width: 100%;
+    padding: 6px 8px;
+    margin-bottom: 10px;
+    background: var(--surface0);
+    border: 1px solid var(--surface1);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+  }}
+  .modal input:focus, .modal select:focus {{
+    border-color: var(--accent);
+  }}
+  .modal-buttons {{
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }}
+  .modal-buttons button {{
+    flex: 1;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+  }}
+  .btn-cancel {{
+    background: var(--surface0);
+    color: var(--subtext);
+  }}
+  .btn-cancel:hover {{
+    background: var(--surface1);
+    color: var(--text);
+  }}
+  .btn-primary {{
+    background: var(--accent);
+    color: var(--base);
+    font-weight: 600;
+  }}
+  .btn-primary:hover {{
+    opacity: 0.9;
+  }}
 </style>
 </head>
 <body>
 <div id="tree"></div>
+<div class="bottom-bar">
+  <button class="bar-btn" onclick="showAddFolderModal()">+ Folder</button>
+  <button class="bar-btn" onclick="showHelpModal()">? Help</button>
+</div>
+
+<div id="addBookmarkOverlay" class="modal-overlay">
+  <div class="modal">
+    <h3>Add Bookmark</h3>
+    <label for="bmName">Name</label>
+    <input type="text" id="bmName" placeholder="Bookmark name">
+    <label for="bmUrl">URL</label>
+    <input type="text" id="bmUrl" placeholder="https://...">
+    <label for="bmFolder">Folder</label>
+    <select id="bmFolder"></select>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModals()">Cancel</button>
+      <button class="btn-primary" onclick="submitAddBookmark()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div id="addFolderOverlay" class="modal-overlay">
+  <div class="modal">
+    <h3>Add Folder</h3>
+    <label for="folderName">Name</label>
+    <input type="text" id="folderName" placeholder="Folder name">
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModals()">Cancel</button>
+      <button class="btn-primary" onclick="submitAddFolder()">Create</button>
+    </div>
+  </div>
+</div>
+
 <script>
   let folders = {folders_json};
   let activeUrl = null;
+  let activeModal = null;
 
   function renderBookmarks(data) {{
     folders = data;
@@ -203,22 +390,56 @@ fn sidebar_html(store: &BookmarkStore) -> String {
       const header = document.createElement('div');
       header.className = 'folder-header';
       header.onclick = function() {{ toggleFolder(fi); }};
+
       const arrow = document.createElement('span');
       arrow.className = 'folder-arrow';
       arrow.textContent = folder.expanded ? '\u25BC' : '\u25B6';
+
       const name = document.createElement('span');
+      name.className = 'folder-name';
       name.textContent = folder.name;
+
+      const actions = document.createElement('span');
+      actions.className = 'folder-actions';
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'icon-btn';
+      addBtn.textContent = '+';
+      addBtn.title = 'Add bookmark to this folder';
+      addBtn.onclick = function(e) {{ e.stopPropagation(); showAddBookmarkModal(fi); }};
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'icon-btn delete';
+      delBtn.textContent = '\u00D7';
+      delBtn.title = 'Delete folder';
+      delBtn.onclick = function(e) {{ e.stopPropagation(); deleteFolder(fi); }};
+
+      actions.appendChild(addBtn);
+      actions.appendChild(delBtn);
       header.appendChild(arrow);
       header.appendChild(name);
+      header.appendChild(actions);
       tree.appendChild(header);
 
       if (folder.expanded) {{
-        folder.bookmarks.forEach(function(bm) {{
+        folder.bookmarks.forEach(function(bm, bi) {{
           const link = document.createElement('div');
           link.className = 'bookmark' + (bm.url === activeUrl ? ' active' : '');
-          link.textContent = bm.name;
           link.title = bm.url;
           link.onclick = function() {{ navigate(bm.url); }};
+
+          const bmName = document.createElement('span');
+          bmName.className = 'bookmark-name';
+          bmName.textContent = bm.name;
+
+          const bmDel = document.createElement('button');
+          bmDel.className = 'delete-btn';
+          bmDel.textContent = '\u00D7';
+          bmDel.title = 'Delete bookmark';
+          bmDel.onclick = function(e) {{ e.stopPropagation(); deleteBookmark(fi, bi); }};
+
+          link.appendChild(bmName);
+          link.appendChild(bmDel);
           tree.appendChild(link);
         }});
       }}
@@ -234,6 +455,78 @@ fn sidebar_html(store: &BookmarkStore) -> String {
   function toggleFolder(index) {{
     window.ipc.postMessage(JSON.stringify({{ action: 'toggle_folder', folder_index: index }}));
   }}
+
+  function deleteFolder(fi) {{
+    if (confirm('Delete folder "' + folders[fi].name + '" and all its bookmarks?')) {{
+      window.ipc.postMessage(JSON.stringify({{ action: 'delete_folder', folder_index: fi }}));
+    }}
+  }}
+
+  function deleteBookmark(fi, bi) {{
+    if (confirm('Delete bookmark "' + folders[fi].bookmarks[bi].name + '"?')) {{
+      window.ipc.postMessage(JSON.stringify({{ action: 'delete_bookmark', folder_index: fi, bookmark_index: bi }}));
+    }}
+  }}
+
+  function showAddBookmarkModal(fi) {{
+    const select = document.getElementById('bmFolder');
+    select.innerHTML = '';
+    folders.forEach(function(folder, i) {{
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = folder.name;
+      if (fi !== undefined && fi === i) opt.selected = true;
+      select.appendChild(opt);
+    }});
+    document.getElementById('bmName').value = '';
+    document.getElementById('bmUrl').value = '';
+    document.getElementById('addBookmarkOverlay').classList.add('active');
+    activeModal = 'addBookmark';
+    document.getElementById('bmName').focus();
+  }}
+
+  function showAddFolderModal() {{
+    document.getElementById('folderName').value = '';
+    document.getElementById('addFolderOverlay').classList.add('active');
+    activeModal = 'addFolder';
+    document.getElementById('folderName').focus();
+  }}
+
+  function showHelpModal() {{
+    // Placeholder — will be wired in Phase 6
+  }}
+
+  function closeModals() {{
+    document.getElementById('addBookmarkOverlay').classList.remove('active');
+    document.getElementById('addFolderOverlay').classList.remove('active');
+    activeModal = null;
+  }}
+
+  function submitAddBookmark() {{
+    const name = document.getElementById('bmName').value.trim();
+    const url = document.getElementById('bmUrl').value.trim();
+    const fi = parseInt(document.getElementById('bmFolder').value, 10);
+    if (!name || !url) return;
+    window.ipc.postMessage(JSON.stringify({{ action: 'add_bookmark', folder_index: fi, name: name, url: url }}));
+    closeModals();
+  }}
+
+  function submitAddFolder() {{
+    const name = document.getElementById('folderName').value.trim();
+    if (!name) return;
+    window.ipc.postMessage(JSON.stringify({{ action: 'add_folder', name: name }}));
+    closeModals();
+  }}
+
+  document.addEventListener('keydown', function(e) {{
+    if (e.key === 'Escape') {{
+      closeModals();
+    }} else if (e.key === 'Enter' && activeModal) {{
+      e.preventDefault();
+      if (activeModal === 'addBookmark') submitAddBookmark();
+      else if (activeModal === 'addFolder') submitAddFolder();
+    }}
+  }});
 
   renderBookmarks(folders);
 </script>
