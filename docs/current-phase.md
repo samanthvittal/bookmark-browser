@@ -1,4 +1,4 @@
-# Current Phase: 7 — Polish & Release
+# Current Phase: 8 — Sidebar Polish, Desktop Integration & GitHub Sync
 
 ## Status: COMPLETE
 
@@ -9,42 +9,70 @@
 - Phase 4 — Sidebar HTML & IPC (complete)
 - Phase 5 — Bookmark & Folder Management (complete)
 - Phase 6 — Keyboard Shortcuts (complete)
+- Phase 7 — Polish & Release (complete)
 
 ## Context
-Phases 1–6 delivered the full feature set: dual-pane layout, bookmark/folder CRUD with
-persistence, sidebar tree view with modals, and keyboard shortcuts. Phase 7 is the final
-polish pass — auditing error handling, fixing edge cases, verifying the release build,
-updating the README, and doing a final code quality review.
+Phases 1–7 delivered a complete v0.1: dual-pane layout with GTK box containers, bookmark/folder
+CRUD with JSON persistence, sidebar tree view with modals, keyboard shortcuts, and a polished
+release build. Phase 8 adds three feature groups: (1) collapsible sidebar with state persistence,
+(2) XDG desktop entry for Linux launcher integration, and (3) GitHub Gist sync for cloud backup
+of bookmarks and settings. A new `Settings` struct is introduced as shared infrastructure.
 
 ## Key Files
-- `src/main.rs` — audit `.unwrap()`/`.expect()` calls, edge cases, dead code
-- `README.md` — update with install instructions, feature list
-- `Cargo.toml` — verify metadata
+- `src/main.rs` — sidebar toggle, Settings struct, GitHub sync, new UserEvent variants, new IPC actions
+- `Cargo.toml` — add `ureq` dependency for HTTP
+- `README.md` — update install instructions
+
+New files:
+- `assets/bookmark-browser.desktop` — XDG desktop entry
+- `assets/bookmark-browser.svg` — app icon
+- `install.sh` — user-level install script
+- `uninstall.sh` — uninstall script
 
 ## Tasks
 
-- [x] **7.1** — Audit all `.unwrap()` and `.expect()` calls — all clean, `.expect()` only on unrecoverable startup
-- [x] **7.2** — Handle edge cases: empty store guard on add bookmark, remove misleading Ctrl+D, truncate long folder names
-- [x] **7.3** — Verify release build: `cargo build --release` succeeds, binary size 950 KB
-- [x] **7.4** — Update README.md with install instructions, feature list, build commands
-- [x] **7.5** — Final code review: removed dead UserEvent variants, `#[allow(dead_code)]`, changed `&PathBuf` to `&Path`
-- [x] **7.6** — Run full test suite and all clippy checks — all pass
+### Feature 1: Collapsible Sidebar
+
+- [x] **8.1** — Sidebar toggle mechanism: add `Ctrl+B` shortcut, `sidebar_box.hide()`/`.show()` on GTK, collapse strip with `»` expand button, `«` button in sidebar header, new `toggle_sidebar` IPC action and `UserEvent::ToggleSidebar`
+- [x] **8.2** — Settings persistence: create `Settings` struct (`sidebar_collapsed`, `github_token`, `github_gist_id`), persist to `~/.config/bookmarks-browser/settings.json`, restore sidebar state on startup, update help modal with `Ctrl+B`
+
+### Feature 2: Desktop Entry
+
+- [x] **8.3** — Create `assets/bookmark-browser.desktop` (XDG Desktop Entry spec) and `assets/bookmark-browser.svg` (Catppuccin-themed bookmark icon)
+- [x] **8.4** — Create `install.sh` and `uninstall.sh` for `~/.local/` user-level install (binary + desktop file + icon), update README with install instructions
+
+### Feature 3: GitHub Sync
+
+- [x] **8.5** — Settings UI: add gear icon button in sidebar bottom bar, settings modal with GitHub PAT input and Gist ID display, `save_settings` IPC action, `UserEvent::SaveSettings`, add `ureq` dependency
+- [x] **8.6** — Push/pull via Gist API: `POST`/`PATCH /gists` for push, `GET /gists/{id}` for pull, spawned threads with `EventLoopProxy`, `Ctrl+U` (push) / `Ctrl+I` (pull) shortcuts, push/pull buttons in sidebar
+- [x] **8.7** — Sync status indicator: status area in sidebar HTML, `updateSyncStatus()` JS function, auto-dismiss messages, error handling (no token, 401, 404 deleted gist, timeout, malformed response)
 
 ## Test Checkpoint
 
-- [x] `cargo build --release` completes without errors
-- [x] `cargo clippy -- -D warnings` passes with no warnings
-- [x] `cargo fmt -- --check` reports no formatting issues
-- [x] `cargo test` passes all tests
-- [x] No `.unwrap()` calls remain in production code paths (test code is OK)
-- [x] Release binary size is under 5 MB (950 KB)
-- [x] README.md has install instructions and feature list
-- [x] `cargo run --release` opens the app and all features work (verified manually)
+- [ ] `cargo build` succeeds with all new code and `ureq` dependency
+- [ ] `cargo clippy -- -D warnings` passes
+- [ ] `cargo fmt -- --check` passes
+- [ ] `cargo test` passes all tests
+- [ ] `Ctrl+B` toggles sidebar visibility; content pane fills window when collapsed
+- [ ] Collapse strip with `»` button appears when sidebar is hidden
+- [ ] Sidebar collapsed state persists across app restarts via `settings.json`
+- [ ] Help modal includes `Ctrl+B — Toggle sidebar`
+- [ ] `desktop-file-validate assets/bookmark-browser.desktop` passes (if tool available)
+- [ ] `install.sh` installs binary + desktop file + icon to `~/.local/`
+- [ ] `uninstall.sh` removes all installed files
+- [ ] Settings modal opens from gear button, saves GitHub PAT to `settings.json`
+- [ ] Push creates/updates a private GitHub Gist with `bookmarks.json`
+- [ ] Pull fetches Gist content and updates local bookmarks + re-renders sidebar
+- [ ] Sync status area shows progress ("Syncing...") and results ("Last synced" / errors)
+- [ ] No `.unwrap()` on network or JSON parsing code paths
 
 ## Notes
-- Keep `.expect()` only in the initial window/webview setup where failure is truly unrecoverable
-- The `#[allow(dead_code)]` on UserEvent can be removed if unused variants are cleaned up
-- Binary size target with LTO + strip: 3–5 MB
+- `sidebar_box` must be extracted from the `#[cfg(target_os = "linux")]` block so it's accessible in the event loop closure
+- Non-Linux: use `set_bounds` with zero-width sidebar and full-width content as fallback
+- Avoid `Ctrl+Shift` combos (Wayland modifier bug — see project memory)
+- `ureq` is synchronous — all network calls must run in `std::thread::spawn` to avoid blocking the event loop
+- GitHub PAT stored in plain text in `settings.json` (acceptable for v1, noted as limitation)
+- `#[serde(default)]` on all Settings fields for forward compatibility
 
 ---
 
