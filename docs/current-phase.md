@@ -1,6 +1,6 @@
 # Current Phase: 1 — Project Bootstrap
 
-## Status: ALL TASKS COMPLETE — ready for test checkpoint
+## Status: COMPLETE
 
 ## Phase Dependencies
 - None (starting point)
@@ -29,8 +29,8 @@ After completing all tasks, manually verify each item:
 - [x] `cargo build` completes without errors
 - [x] `cargo clippy -- -D warnings` passes with no warnings
 - [x] `cargo fmt -- --check` reports no formatting issues
-- [ ] Running `cargo run` opens a native window titled "Bookmarks Browser" at approximately 1200x800 size
-- [ ] Closing the window exits the process cleanly (no zombie process)
+- [x] Running `cargo run` opens a native window titled "Bookmarks Browser" at approximately 1200x800 size
+- [x] Closing the window exits the process cleanly (no zombie process)
 
 ## Notes
 - System dependency required: `webkit2gtk-4.1` (install via `sudo pacman -S webkit2gtk-4.1` on Arch)
