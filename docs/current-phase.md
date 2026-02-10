@@ -39,7 +39,7 @@ updating the README, and doing a final code quality review.
 - [x] No `.unwrap()` calls remain in production code paths (test code is OK)
 - [x] Release binary size is under 5 MB (950 KB)
 - [x] README.md has install instructions and feature list
-- [ ] `cargo run --release` opens the app and all features work (manual verification needed)
+- [x] `cargo run --release` opens the app and all features work (verified manually)
 
 ## Notes
 - Keep `.expect()` only in the initial window/webview setup where failure is truly unrecoverable
