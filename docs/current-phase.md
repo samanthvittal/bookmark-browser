@@ -1,6 +1,6 @@
 # Current Phase: 2 — Data Model & Persistence
 
-## Status: NOT STARTED
+## Status: IN PROGRESS
 
 ## Phase Dependencies
 - Phase 1 — Project Bootstrap (complete)
@@ -16,13 +16,13 @@ and sample data for first run. This phase touches only `src/main.rs` — no WebV
 
 ## Tasks
 
-- [ ] **2.1** — Define `Bookmark`, `Folder`, `BookmarkStore` structs with serde derives (`Serialize`, `Deserialize`, `Clone`, `Debug`)
-- [ ] **2.2** — Implement `default_true()` helper for `Folder.expanded` serde default
-- [ ] **2.3** — Implement `default_store()` returning a `BookmarkStore` with sample bookmarks (Documentation folder with Rust/Arch Wiki links, News folder with Hacker News)
-- [ ] **2.4** — Implement `config_path()` using `dirs::config_dir()` returning `~/.config/bookmarks-browser/bookmarks.json`
-- [ ] **2.5** — Implement `BookmarkStore::load()` — read from config path, fallback to `default_store()` if file missing or invalid
-- [ ] **2.6** — Implement `BookmarkStore::save()` — write pretty JSON to config path, create parent dirs if needed
-- [ ] **2.7** — Unit test: roundtrip `save()` then `load()` produces identical data
+- [x] **2.1** — Define `Bookmark`, `Folder`, `BookmarkStore` structs with serde derives (`Serialize`, `Deserialize`, `Clone`, `Debug`)
+- [x] **2.2** — Implement `default_true()` helper for `Folder.expanded` serde default
+- [x] **2.3** — Implement `default_store()` returning a `BookmarkStore` with sample bookmarks (Documentation folder with Rust/Arch Wiki links, News folder with Hacker News)
+- [x] **2.4** — Implement `config_path()` using `dirs::config_dir()` returning `~/.config/bookmarks-browser/bookmarks.json`
+- [x] **2.5** — Implement `BookmarkStore::load()` — read from config path, fallback to `default_store()` if file missing or invalid
+- [x] **2.6** — Implement `BookmarkStore::save()` — write pretty JSON to config path, create parent dirs if needed
+- [x] **2.7** — Unit test: roundtrip `save()` then `load()` produces identical data
 
 ## Test Checkpoint
 
