@@ -293,6 +293,7 @@ fn main() {
     }
 
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
+    let proxy = event_loop.create_proxy();
 
     let window = WindowBuilder::new()
         .with_title("Bookmarks Browser")
@@ -307,7 +308,29 @@ fn main() {
 
     let sidebar_builder = WebViewBuilder::new()
         .with_html(sidebar_html(&store))
-        .with_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h));
+        .with_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h))
+        .with_ipc_handler(move |req: wry::http::Request<String>| {
+            let body = req.body();
+            let Ok(msg) = serde_json::from_str::<serde_json::Value>(body) else {
+                return;
+            };
+            let Some(action) = msg.get("action").and_then(|a| a.as_str()) else {
+                return;
+            };
+            match action {
+                "navigate" => {
+                    if let Some(url) = msg.get("url").and_then(|u| u.as_str()) {
+                        let _ = proxy.send_event(UserEvent::Navigate(url.to_string()));
+                    }
+                }
+                "toggle_folder" => {
+                    if let Some(index) = msg.get("folder_index").and_then(|i| i.as_u64()) {
+                        let _ = proxy.send_event(UserEvent::ToggleFolder(index as usize));
+                    }
+                }
+                _ => {}
+            }
+        });
 
     let content_builder = WebViewBuilder::new()
         .with_html(welcome_html())
