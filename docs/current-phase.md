@@ -1,46 +1,51 @@
-# Current Phase: 2 — Data Model & Persistence
+# Current Phase: 3 — Dual WebView Setup
 
-## Status: COMPLETE
+## Status: NOT STARTED
 
 ## Phase Dependencies
 - Phase 1 — Project Bootstrap (complete)
+- Phase 2 — Data Model & Persistence (complete)
 
 ## Context
-Phase 1 gave us a compilable Cargo project with a tao window. Now we need the data
-layer: Rust structs for bookmarks/folders, JSON persistence to `~/.config/bookmarks-browser/bookmarks.json`,
-and sample data for first run. This phase touches only `src/main.rs` — no WebViews or UI yet.
+Phase 2 gave us the data layer: `BookmarkStore` with JSON persistence and sample bookmarks.
+Now we add the visual foundation: two side-by-side `wry` WebViews — a fixed-width sidebar
+(280px) and a content pane that fills the rest. The sidebar shows placeholder HTML for now;
+the content pane shows a dark-themed welcome message. Both panes must resize correctly
+when the window is resized. This is the first phase that uses `wry`.
 
 ## Key Files
-- `src/main.rs` — will add structs, persistence functions, and load store on startup
-- `Cargo.toml` — already has `serde`, `serde_json`, `dirs` dependencies (no changes needed)
+- `src/main.rs` — will replace bare `tao` window with dual `wry` WebViews
+- `Cargo.toml` — already has `wry` dependency (no changes needed)
 
 ## Tasks
 
-- [x] **2.1** — Define `Bookmark`, `Folder`, `BookmarkStore` structs with serde derives (`Serialize`, `Deserialize`, `Clone`, `Debug`)
-- [x] **2.2** — Implement `default_true()` helper for `Folder.expanded` serde default
-- [x] **2.3** — Implement `default_store()` returning a `BookmarkStore` with sample bookmarks (Documentation folder with Rust/Arch Wiki links, News folder with Hacker News)
-- [x] **2.4** — Implement `config_path()` using `dirs::config_dir()` returning `~/.config/bookmarks-browser/bookmarks.json`
-- [x] **2.5** — Implement `BookmarkStore::load()` — read from config path, fallback to `default_store()` if file missing or invalid
-- [x] **2.6** — Implement `BookmarkStore::save()` — write pretty JSON to config path, create parent dirs if needed
-- [x] **2.7** — Unit test: roundtrip `save()` then `load()` produces identical data
+- [ ] **3.1** — Define `SIDEBAR_WIDTH` constant (280.0 f64)
+- [ ] **3.2** — Create sidebar WebView with placeholder HTML ("Sidebar placeholder") using `WebViewBuilder::new_as_child`
+- [ ] **3.3** — Create content WebView with welcome page HTML (centered "Select a bookmark" message, dark theme using Catppuccin Mocha palette)
+- [ ] **3.4** — Handle `WindowEvent::Resized` — recalculate and call `set_bounds()` on both webviews
+- [ ] **3.5** — Verify both panes render and resize correctly (manual visual check)
 
 ## Test Checkpoint
 
 - [ ] `cargo build` completes without errors
 - [ ] `cargo clippy -- -D warnings` passes with no warnings
 - [ ] `cargo fmt -- --check` reports no formatting issues
-- [ ] `cargo test` passes — roundtrip test verifies save/load consistency
-- [ ] Running `cargo run` still opens the window (no regression)
-- [ ] After first run, `~/.config/bookmarks-browser/bookmarks.json` exists with sample data
+- [ ] `cargo test` passes (existing roundtrip test still works)
+- [ ] Running `cargo run` shows two panes side by side: sidebar (280px) and content pane
+- [ ] Sidebar shows "Sidebar placeholder" text
+- [ ] Content pane shows centered "Select a bookmark" welcome message with dark theme
+- [ ] Resizing the window correctly repositions and resizes both panes
 
 ## Notes
-- Keep everything in `src/main.rs` for now — the file is still small
-- Use `Result<T, Box<dyn std::error::Error>>` for persistence functions
-- Use `serde_json::to_string_pretty` for human-readable JSON output
-- The `load()` function should silently fall back to defaults on any error (missing file, invalid JSON)
-- The unit test should use a temp directory (via `std::env::temp_dir()`) to avoid touching real config
+- Use `WebViewBuilder::new_as_child(&window)` to create child webviews within the tao window
+- Sidebar is positioned at (0, 0) with width `SIDEBAR_WIDTH` and full window height
+- Content pane is positioned at (`SIDEBAR_WIDTH`, 0) with remaining width and full window height
+- Both webviews need their bounds updated in the `Resized` event handler
+- The welcome page HTML should use CSS variables from the Catppuccin Mocha palette
+- Keep the `BookmarkStore` load/save from Phase 2 — it's not wired to the UI yet
 
 ---
 
 ## Completed Phases
 - Phase 1 — Project Bootstrap (completed 2026-02-10)
+- Phase 2 — Data Model & Persistence (completed 2026-02-10)
