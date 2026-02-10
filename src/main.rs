@@ -36,6 +36,10 @@ enum UserEvent {
         bookmark_index: usize,
     },
     DeleteFolder(usize),
+    SaveSettings {
+        github_token: String,
+        github_gist_id: String,
+    },
 }
 
 fn default_true() -> bool {
@@ -166,8 +170,10 @@ impl BookmarkStore {
     }
 }
 
-fn sidebar_html(store: &BookmarkStore) -> String {
+fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
     let folders_json = serde_json::to_string(&store.folders).unwrap_or_else(|_| "[]".to_string());
+    let has_token = !settings.github_token.is_empty();
+    let gist_id = &settings.github_gist_id;
     format!(
         r#"<!DOCTYPE html>
 <html>
@@ -423,6 +429,7 @@ fn sidebar_html(store: &BookmarkStore) -> String {
 <div id="tree"></div>
 <div class="bottom-bar">
   <button class="bar-btn" onclick="showAddFolderModal()">+ Folder</button>
+  <button class="bar-btn" onclick="showSettingsModal()" title="Settings">\u2699</button>
   <button class="bar-btn" onclick="showHelpModal()">? Help</button>
   <button class="bar-btn" onclick="collapseSidebar()" title="Collapse sidebar (Ctrl+B)">&laquo;</button>
 </div>
@@ -465,11 +472,30 @@ fn sidebar_html(store: &BookmarkStore) -> String {
       <tr><td class="help-key">Ctrl+[</td><td>Navigate back</td></tr>
       <tr><td class="help-key">Ctrl+]</td><td>Navigate forward</td></tr>
       <tr><td class="help-key">Ctrl+B</td><td>Toggle sidebar</td></tr>
+      <tr><td class="help-key">Ctrl+U</td><td>Push to GitHub</td></tr>
+      <tr><td class="help-key">Ctrl+I</td><td>Pull from GitHub</td></tr>
       <tr><td class="help-key">Ctrl+Q</td><td>Quit</td></tr>
       <tr><td class="help-key">Escape</td><td>Close dialog</td></tr>
     </table>
     <div class="modal-buttons">
       <button class="btn-primary" onclick="closeModals()" style="flex:1">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="settingsOverlay" class="modal-overlay">
+  <div class="modal">
+    <h3>Settings</h3>
+    <label for="ghToken">GitHub Personal Access Token</label>
+    <input type="password" id="ghToken" placeholder="ghp_...">
+    <label for="ghGistId">Gist ID</label>
+    <div style="display:flex;gap:4px;margin-bottom:10px;">
+      <input type="text" id="ghGistId" readonly style="margin-bottom:0;flex:1;opacity:0.7;" placeholder="Auto-created on first push">
+      <button class="btn-cancel" onclick="clearGistId()" style="padding:6px 8px;font-size:12px;white-space:nowrap;">Clear</button>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModals()">Cancel</button>
+      <button class="btn-primary" onclick="submitSaveSettings()">Save</button>
     </div>
   </div>
 </div>
@@ -602,6 +628,7 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     document.getElementById('addBookmarkOverlay').classList.remove('active');
     document.getElementById('addFolderOverlay').classList.remove('active');
     document.getElementById('helpOverlay').classList.remove('active');
+    document.getElementById('settingsOverlay').classList.remove('active');
     activeModal = null;
   }}
 
@@ -625,6 +652,40 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     window.ipc.postMessage(JSON.stringify({{ action: 'toggle_sidebar' }}));
   }}
 
+  let savedHasToken = {has_token};
+  let savedGistId = '{gist_id}';
+
+  function showSettingsModal() {{
+    document.getElementById('ghToken').value = '';
+    document.getElementById('ghToken').placeholder = savedHasToken ? '(token saved - enter new to change)' : 'ghp_...';
+    document.getElementById('ghGistId').value = savedGistId;
+    document.getElementById('settingsOverlay').classList.add('active');
+    activeModal = 'settings';
+    document.getElementById('ghToken').focus();
+  }}
+
+  function clearGistId() {{
+    document.getElementById('ghGistId').value = '';
+  }}
+
+  function submitSaveSettings() {{
+    const token = document.getElementById('ghToken').value.trim();
+    const gistId = document.getElementById('ghGistId').value.trim();
+    window.ipc.postMessage(JSON.stringify({{
+      action: 'save_settings',
+      github_token: token,
+      github_gist_id: gistId
+    }}));
+    if (token) savedHasToken = true;
+    savedGistId = gistId;
+    closeModals();
+  }}
+
+  function updateSettings(hasToken, gistId) {{
+    savedHasToken = hasToken;
+    savedGistId = gistId;
+  }}
+
   document.addEventListener('keydown', function(e) {{
     if (e.key === 'Escape') {{
       closeModals();
@@ -639,7 +700,9 @@ fn sidebar_html(store: &BookmarkStore) -> String {
 </script>
 </body>
 </html>"#,
-        folders_json = folders_json
+        folders_json = folders_json,
+        has_token = has_token,
+        gist_id = gist_id
     )
 }
 
@@ -765,7 +828,7 @@ fn main() {
     let h = inner.height as f64 / scale;
 
     let sidebar_builder = WebViewBuilder::new()
-        .with_html(sidebar_html(&store))
+        .with_html(sidebar_html(&store, &settings))
         .with_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h))
         .with_ipc_handler(move |req: wry::http::Request<String>| {
             let body = req.body();
@@ -822,6 +885,22 @@ fn main() {
                     if let Some(index) = msg.get("folder_index").and_then(|i| i.as_u64()) {
                         let _ = proxy.send_event(UserEvent::DeleteFolder(index as usize));
                     }
+                }
+                "save_settings" => {
+                    let token = msg
+                        .get("github_token")
+                        .and_then(|t| t.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let gist_id = msg
+                        .get("github_gist_id")
+                        .and_then(|g| g.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let _ = proxy.send_event(UserEvent::SaveSettings {
+                        github_token: token,
+                        github_gist_id: gist_id,
+                    });
                 }
                 _ => {}
             }
@@ -1090,6 +1169,21 @@ fn main() {
                         let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
                     }
                 }
+            }
+            Event::UserEvent(UserEvent::SaveSettings {
+                github_token,
+                github_gist_id,
+            }) => {
+                // Only update token if a new one was provided
+                if !github_token.is_empty() {
+                    settings.github_token = github_token;
+                }
+                settings.github_gist_id = github_gist_id;
+                let _ = settings.save();
+                let has_token = !settings.github_token.is_empty();
+                let gist_id = &settings.github_gist_id;
+                let _ =
+                    sidebar.evaluate_script(&format!("updateSettings({has_token}, '{gist_id}')"));
             }
             _ => {}
         }
