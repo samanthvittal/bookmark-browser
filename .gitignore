@@ -1,6 +1,7 @@
 /target
 .claude/
 docs/
+CLAUDE.md
 *.swp
 *.swo
 *~
