@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tao::{
@@ -20,7 +20,6 @@ use wry::WebViewBuilderExtUnix;
 const SIDEBAR_WIDTH: f64 = 280.0;
 
 #[derive(Debug)]
-#[allow(dead_code)]
 enum UserEvent {
     Navigate(String),
     ToggleFolder(usize),
@@ -35,9 +34,6 @@ enum UserEvent {
         bookmark_index: usize,
     },
     DeleteFolder(usize),
-    ReloadContent,
-    GoBack,
-    GoForward,
 }
 
 fn default_true() -> bool {
@@ -104,7 +100,7 @@ impl BookmarkStore {
         Self::load_from(&config_path())
     }
 
-    fn load_from(path: &PathBuf) -> BookmarkStore {
+    fn load_from(path: &Path) -> BookmarkStore {
         fs::read_to_string(path)
             .ok()
             .and_then(|data| serde_json::from_str(&data).ok())
@@ -115,7 +111,7 @@ impl BookmarkStore {
         self.save_to(&config_path())
     }
 
-    fn save_to(&self, path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    fn save_to(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
@@ -320,6 +316,8 @@ fn sidebar_html(store: &BookmarkStore) -> String {
   .modal select {{
     appearance: none;
     -webkit-appearance: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a6adc8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 8px center;
@@ -419,7 +417,6 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     <table class="help-table">
       <tr><td class="help-key">Ctrl+N</td><td>Add bookmark</td></tr>
       <tr><td class="help-key">Ctrl+Shift+N</td><td>Add folder</td></tr>
-      <tr><td class="help-key">Ctrl+D</td><td>Delete bookmark</td></tr>
       <tr><td class="help-key">F5</td><td>Reload page</td></tr>
       <tr><td class="help-key">Ctrl+[</td><td>Navigate back</td></tr>
       <tr><td class="help-key">Ctrl+]</td><td>Navigate forward</td></tr>
@@ -524,6 +521,10 @@ fn sidebar_html(store: &BookmarkStore) -> String {
   }}
 
   function showAddBookmarkModal(fi) {{
+    if (folders.length === 0) {{
+      alert('Create a folder first before adding bookmarks.');
+      return;
+    }}
     const select = document.getElementById('bmFolder');
     select.innerHTML = '';
     folders.forEach(function(folder, i) {{
@@ -877,15 +878,6 @@ fn main() {
                         let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
                     }
                 }
-            }
-            Event::UserEvent(UserEvent::ReloadContent) => {
-                let _ = content.evaluate_script("location.reload()");
-            }
-            Event::UserEvent(UserEvent::GoBack) => {
-                let _ = content.evaluate_script("history.back()");
-            }
-            Event::UserEvent(UserEvent::GoForward) => {
-                let _ = content.evaluate_script("history.forward()");
             }
             _ => {}
         }
