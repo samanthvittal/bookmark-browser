@@ -1,0 +1,17 @@
+[package]
+name = "bookmarks-browser"
+version = "0.1.0"
+edition = "2021"
+description = "A lightweight two-pane bookmark browser for Linux"
+
+[dependencies]
+wry = "0.47"
+tao = "0.31"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "6"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
