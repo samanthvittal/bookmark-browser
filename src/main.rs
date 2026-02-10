@@ -141,22 +141,19 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     --overlay: rgba(0, 0, 0, 0.5);
   }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  html {{ height: 100%; }}
   body {{
     background: var(--mantle);
     color: var(--text);
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 14px;
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    height: 100vh;
+    overflow-y: auto;
     border-right: 1px solid var(--surface0);
   }}
   #tree {{
-    flex: 1;
-    overflow-y: auto;
     padding: 8px 0;
+    padding-bottom: 48px;
+    overflow-y: auto;
   }}
   .folder-header {{
     display: flex;
@@ -247,10 +244,16 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     color: var(--red);
   }}
   .bottom-bar {{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     display: flex;
+    background: var(--mantle);
     border-top: 1px solid var(--surface0);
     padding: 8px;
     gap: 8px;
+    z-index: 10;
   }}
   .bar-btn {{
     flex: 1;
