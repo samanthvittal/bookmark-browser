@@ -179,6 +179,11 @@ fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
     let folders_json = serde_json::to_string(&store.folders).unwrap_or_else(|_| "[]".to_string());
     let has_token = !settings.github_token.is_empty();
     let gist_id = &settings.github_gist_id;
+    let collapsed_class = if settings.sidebar_collapsed {
+        " collapsed"
+    } else {
+        ""
+    };
     format!(
         r#"<!DOCTYPE html>
 <html>
@@ -449,16 +454,44 @@ fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
   .sync-status.status-error {{
     color: var(--red);
   }}
+  /* Collapsed sidebar mode */
+  #expandBtn {{
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+    flex: 1;
+  }}
+  #expandBtn:hover {{
+    background: var(--surface0);
+    color: var(--accent);
+  }}
+  body.collapsed #tree,
+  body.collapsed .bottom-bar,
+  body.collapsed .sync-status,
+  body.collapsed .modal-overlay {{
+    display: none !important;
+  }}
+  body.collapsed #expandBtn {{
+    display: block;
+  }}
+  body.collapsed {{
+    border-right: 1px solid var(--surface0);
+  }}
 </style>
 </head>
-<body>
+<body class="{collapsed_class}">
+<button id="expandBtn" onclick="expandSidebar()" title="Expand sidebar (Ctrl+B)">&raquo;</button>
 <div id="tree"></div>
 <div id="syncStatus" class="sync-status"></div>
 <div class="bottom-bar" style="flex-wrap:wrap;">
-  <button class="bar-btn" onclick="pushToGitHub()" title="Push to GitHub (Ctrl+U)">\u2191 Push</button>
-  <button class="bar-btn" onclick="pullFromGitHub()" title="Pull from GitHub (Ctrl+I)">\u2193 Pull</button>
+  <button class="bar-btn" onclick="pushToGitHub()" title="Push to GitHub (Ctrl+U)">&#x2191; Push</button>
+  <button class="bar-btn" onclick="pullFromGitHub()" title="Pull from GitHub (Ctrl+I)">&#x2193; Pull</button>
   <button class="bar-btn" onclick="showAddFolderModal()">+ Folder</button>
-  <button class="bar-btn" onclick="showSettingsModal()" title="Settings">\u2699</button>
+  <button class="bar-btn" onclick="showSettingsModal()" title="Settings">&#x2699; Settings</button>
   <button class="bar-btn" onclick="showHelpModal()">? Help</button>
   <button class="bar-btn" onclick="collapseSidebar()" title="Collapse sidebar (Ctrl+B)">&laquo;</button>
 </div>
@@ -681,6 +714,18 @@ fn sidebar_html(store: &BookmarkStore, settings: &Settings) -> String {
     window.ipc.postMessage(JSON.stringify({{ action: 'toggle_sidebar' }}));
   }}
 
+  function expandSidebar() {{
+    window.ipc.postMessage(JSON.stringify({{ action: 'toggle_sidebar' }}));
+  }}
+
+  function setSidebarCollapsed(collapsed) {{
+    if (collapsed) {{
+      document.body.classList.add('collapsed');
+    }} else {{
+      document.body.classList.remove('collapsed');
+    }}
+  }}
+
   let savedHasToken = {has_token};
   let savedGistId = '{gist_id}';
 
@@ -818,48 +863,6 @@ fn welcome_html() -> String {
         .to_string()
 }
 
-fn strip_html() -> String {
-    r#"<!DOCTYPE html>
-<html>
-<head>
-<style>
-  :root {
-    --mantle: #181825;
-    --surface0: #313244;
-    --text: #cdd6f4;
-    --accent: #cba6f7;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: var(--mantle);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    border-right: 1px solid var(--surface0);
-  }
-  button {
-    background: none;
-    border: none;
-    color: var(--text);
-    font-size: 16px;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-  button:hover {
-    background: var(--surface0);
-    color: var(--accent);
-  }
-</style>
-</head>
-<body>
-  <button onclick="window.ipc.postMessage(JSON.stringify({action:'toggle_sidebar'}))" title="Expand sidebar (Ctrl+B)">&raquo;</button>
-</body>
-</html>"#
-        .to_string()
-}
-
 fn format_ureq_error(e: ureq::Error) -> String {
     match e {
         ureq::Error::StatusCode(401) => "Invalid or expired GitHub token".to_string(),
@@ -966,8 +969,6 @@ fn main() {
 
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let proxy = event_loop.create_proxy();
-    #[cfg(target_os = "linux")]
-    let strip_proxy = proxy.clone();
 
     let window = WindowBuilder::new()
         .with_title("Bookmarks Browser")
@@ -1071,54 +1072,35 @@ fn main() {
         .with_user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
 
     #[cfg(target_os = "linux")]
-    let strip_builder = WebViewBuilder::new()
-        .with_html(strip_html())
-        .with_bounds(make_bounds(0.0, 0.0, STRIP_WIDTH, h))
-        .with_ipc_handler(move |req: wry::http::Request<String>| {
-            let body = req.body();
-            if let Ok(msg) = serde_json::from_str::<serde_json::Value>(body) {
-                if msg.get("action").and_then(|a| a.as_str()) == Some("toggle_sidebar") {
-                    let _ = strip_proxy.send_event(UserEvent::ToggleSidebar);
-                }
-            }
-        });
-
-    #[cfg(target_os = "linux")]
-    let (sidebar, content, sidebar_gtk_box, strip_gtk_box, _strip_wv) = {
+    let (sidebar, content, sidebar_gtk_box) = {
         use gtk::prelude::*;
 
         let vbox = window.default_vbox().expect("Failed to get default vbox");
         let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         vbox.pack_start(&hbox, true, true, 0);
 
-        let strip_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        strip_box.set_size_request(STRIP_WIDTH as i32, -1);
-        hbox.pack_start(&strip_box, false, false, 0);
-
+        let sidebar_width = if initial_collapsed {
+            STRIP_WIDTH
+        } else {
+            SIDEBAR_WIDTH
+        };
         let sidebar_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        sidebar_box.set_size_request(SIDEBAR_WIDTH as i32, -1);
+        sidebar_box.set_size_request(sidebar_width as i32, -1);
         hbox.pack_start(&sidebar_box, false, false, 0);
 
         let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
         hbox.pack_start(&content_box, true, true, 0);
 
         hbox.show_all();
-        if initial_collapsed {
-            sidebar_box.hide();
-        } else {
-            strip_box.hide();
-        }
 
-        let strip = strip_builder
-            .build_gtk(&strip_box)
-            .expect("Failed to create strip webview");
         let sidebar = sidebar_builder
             .build_gtk(&sidebar_box)
             .expect("Failed to create sidebar webview");
         let content = content_builder
             .build_gtk(&content_box)
             .expect("Failed to create content webview");
-        (sidebar, content, sidebar_box, strip_box, strip)
+
+        (sidebar, content, sidebar_box)
     };
 
     #[cfg(not(target_os = "linux"))]
@@ -1139,10 +1121,6 @@ fn main() {
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
-
-        // Keep strip webview alive in the closure
-        #[cfg(target_os = "linux")]
-        let _ = &_strip_wv;
 
         match event {
             Event::WindowEvent {
@@ -1166,16 +1144,18 @@ fn main() {
                     sidebar_collapsed = !sidebar_collapsed;
                     settings.sidebar_collapsed = sidebar_collapsed;
                     let _ = settings.save();
+                    let _ = sidebar
+                        .evaluate_script(&format!("setSidebarCollapsed({})", sidebar_collapsed));
                     #[cfg(target_os = "linux")]
                     {
                         use gtk::prelude::*;
-                        if sidebar_collapsed {
-                            sidebar_gtk_box.hide();
-                            strip_gtk_box.show_all();
+                        let new_width = if sidebar_collapsed {
+                            STRIP_WIDTH
                         } else {
-                            strip_gtk_box.hide();
-                            sidebar_gtk_box.show_all();
-                        }
+                            SIDEBAR_WIDTH
+                        };
+                        sidebar_gtk_box.set_size_request(new_width as i32, -1);
+                        sidebar_gtk_box.queue_resize();
                     }
                     #[cfg(not(target_os = "linux"))]
                     {
@@ -1248,16 +1228,18 @@ fn main() {
                 sidebar_collapsed = !sidebar_collapsed;
                 settings.sidebar_collapsed = sidebar_collapsed;
                 let _ = settings.save();
+                let _ =
+                    sidebar.evaluate_script(&format!("setSidebarCollapsed({})", sidebar_collapsed));
                 #[cfg(target_os = "linux")]
                 {
                     use gtk::prelude::*;
-                    if sidebar_collapsed {
-                        sidebar_gtk_box.hide();
-                        strip_gtk_box.show_all();
+                    let new_width = if sidebar_collapsed {
+                        STRIP_WIDTH
                     } else {
-                        strip_gtk_box.hide();
-                        sidebar_gtk_box.show_all();
-                    }
+                        SIDEBAR_WIDTH
+                    };
+                    sidebar_gtk_box.set_size_request(new_width as i32, -1);
+                    sidebar_gtk_box.queue_resize();
                 }
                 #[cfg(not(target_os = "linux"))]
                 {
