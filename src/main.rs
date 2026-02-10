@@ -141,12 +141,14 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     --overlay: rgba(0, 0, 0, 0.5);
   }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  html {{ height: 100%; }}
   body {{
     background: var(--mantle);
     color: var(--text);
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 14px;
-    height: 100vh;
+    height: 100%;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     border-right: 1px solid var(--surface0);
@@ -352,6 +354,20 @@ fn sidebar_html(store: &BookmarkStore) -> String {
   .btn-primary:hover {{
     opacity: 0.9;
   }}
+  .help-table {{
+    width: 100%;
+    margin-bottom: 12px;
+  }}
+  .help-table td {{
+    padding: 4px 0;
+    font-size: 13px;
+  }}
+  .help-key {{
+    color: var(--accent);
+    font-family: monospace;
+    padding-right: 12px;
+    white-space: nowrap;
+  }}
 </style>
 </head>
 <body>
@@ -385,6 +401,25 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     <div class="modal-buttons">
       <button class="btn-cancel" onclick="closeModals()">Cancel</button>
       <button class="btn-primary" onclick="submitAddFolder()">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="helpOverlay" class="modal-overlay">
+  <div class="modal">
+    <h3>Keyboard Shortcuts</h3>
+    <table class="help-table">
+      <tr><td class="help-key">Ctrl+N</td><td>Add bookmark</td></tr>
+      <tr><td class="help-key">Ctrl+Shift+N</td><td>Add folder</td></tr>
+      <tr><td class="help-key">Ctrl+D</td><td>Delete bookmark</td></tr>
+      <tr><td class="help-key">F5</td><td>Reload page</td></tr>
+      <tr><td class="help-key">Ctrl+[</td><td>Navigate back</td></tr>
+      <tr><td class="help-key">Ctrl+]</td><td>Navigate forward</td></tr>
+      <tr><td class="help-key">Ctrl+Q</td><td>Quit</td></tr>
+      <tr><td class="help-key">Escape</td><td>Close dialog</td></tr>
+    </table>
+    <div class="modal-buttons">
+      <button class="btn-primary" onclick="closeModals()" style="flex:1">Close</button>
     </div>
   </div>
 </div>
@@ -505,12 +540,14 @@ fn sidebar_html(store: &BookmarkStore) -> String {
   }}
 
   function showHelpModal() {{
-    // Placeholder — will be wired in Phase 6
+    document.getElementById('helpOverlay').classList.add('active');
+    activeModal = 'help';
   }}
 
   function closeModals() {{
     document.getElementById('addBookmarkOverlay').classList.remove('active');
     document.getElementById('addFolderOverlay').classList.remove('active');
+    document.getElementById('helpOverlay').classList.remove('active');
     activeModal = null;
   }}
 
