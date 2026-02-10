@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use tao::{
     dpi::LogicalSize,
     event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::{ControlFlow, EventLoopBuilder},
     window::WindowBuilder,
 };
 use wry::dpi::{LogicalPosition, LogicalSize as WryLogicalSize};
@@ -17,6 +17,12 @@ use tao::platform::unix::WindowExtUnix;
 use wry::WebViewBuilderExtUnix;
 
 const SIDEBAR_WIDTH: f64 = 280.0;
+
+#[derive(Debug)]
+enum UserEvent {
+    Navigate(String),
+    ToggleFolder(usize),
+}
 
 fn default_true() -> bool {
     true
@@ -195,7 +201,7 @@ fn main() {
         eprintln!("Warning: could not save bookmarks: {e}");
     }
 
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
 
     let window = WindowBuilder::new()
         .with_title("Bookmarks Browser")
@@ -266,6 +272,7 @@ fn main() {
             } => {
                 *control_flow = ControlFlow::Exit;
             }
+            Event::UserEvent(_) => {}
             _ => {}
         }
     });
