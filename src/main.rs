@@ -90,11 +90,54 @@ fn default_store() -> BookmarkStore {
     }
 }
 
-fn config_path() -> PathBuf {
+fn config_dir() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".config"))
         .join("bookmarks-browser")
-        .join("bookmarks.json")
+}
+
+fn config_path() -> PathBuf {
+    config_dir().join("bookmarks.json")
+}
+
+fn settings_path() -> PathBuf {
+    config_dir().join("settings.json")
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+struct Settings {
+    #[serde(default)]
+    sidebar_collapsed: bool,
+    #[serde(default)]
+    github_token: String,
+    #[serde(default)]
+    github_gist_id: String,
+}
+
+impl Settings {
+    fn load() -> Settings {
+        Self::load_from(&settings_path())
+    }
+
+    fn load_from(path: &Path) -> Settings {
+        fs::read_to_string(path)
+            .ok()
+            .and_then(|data| serde_json::from_str(&data).ok())
+            .unwrap_or_default()
+    }
+
+    fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+        self.save_to(&settings_path())
+    }
+
+    fn save_to(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let json = serde_json::to_string_pretty(self)?;
+        fs::write(path, json)?;
+        Ok(())
+    }
 }
 
 impl BookmarkStore {
@@ -421,6 +464,7 @@ fn sidebar_html(store: &BookmarkStore) -> String {
       <tr><td class="help-key">F5</td><td>Reload page</td></tr>
       <tr><td class="help-key">Ctrl+[</td><td>Navigate back</td></tr>
       <tr><td class="help-key">Ctrl+]</td><td>Navigate forward</td></tr>
+      <tr><td class="help-key">Ctrl+B</td><td>Toggle sidebar</td></tr>
       <tr><td class="help-key">Ctrl+Q</td><td>Quit</td></tr>
       <tr><td class="help-key">Escape</td><td>Close dialog</td></tr>
     </table>
@@ -701,6 +745,9 @@ fn main() {
         eprintln!("Warning: could not save bookmarks: {e}");
     }
 
+    let mut settings = Settings::load();
+    let initial_collapsed = settings.sidebar_collapsed;
+
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let proxy = event_loop.create_proxy();
     #[cfg(target_os = "linux")]
@@ -818,7 +865,11 @@ fn main() {
         hbox.pack_start(&content_box, true, true, 0);
 
         hbox.show_all();
-        strip_box.hide();
+        if initial_collapsed {
+            sidebar_box.hide();
+        } else {
+            strip_box.hide();
+        }
 
         let strip = strip_builder
             .build_gtk(&strip_box)
@@ -844,7 +895,7 @@ fn main() {
     };
 
     let mut modifiers = ModifiersState::empty();
-    let mut sidebar_collapsed = false;
+    let mut sidebar_collapsed = initial_collapsed;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -873,6 +924,8 @@ fn main() {
 
                 if ctrl && *key == Key::Character("b") {
                     sidebar_collapsed = !sidebar_collapsed;
+                    settings.sidebar_collapsed = sidebar_collapsed;
+                    let _ = settings.save();
                     #[cfg(target_os = "linux")]
                     {
                         use gtk::prelude::*;
@@ -949,6 +1002,8 @@ fn main() {
             }
             Event::UserEvent(UserEvent::ToggleSidebar) => {
                 sidebar_collapsed = !sidebar_collapsed;
+                settings.sidebar_collapsed = sidebar_collapsed;
+                let _ = settings.save();
                 #[cfg(target_os = "linux")]
                 {
                     use gtk::prelude::*;
@@ -1062,5 +1117,36 @@ mod tests {
 
         // Clean up
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn settings_roundtrip() {
+        let dir = env::temp_dir().join("bookmarks-browser-settings-test");
+        let path = dir.join("settings.json");
+
+        let _ = fs::remove_dir_all(&dir);
+
+        let settings = Settings {
+            sidebar_collapsed: true,
+            github_token: "test-token".to_string(),
+            github_gist_id: "abc123".to_string(),
+        };
+        settings.save_to(&path).expect("save should succeed");
+
+        let loaded = Settings::load_from(&path);
+        assert_eq!(loaded.sidebar_collapsed, true);
+        assert_eq!(loaded.github_token, "test-token");
+        assert_eq!(loaded.github_gist_id, "abc123");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn settings_default_on_missing_file() {
+        let path = env::temp_dir().join("nonexistent-settings-dir/settings.json");
+        let loaded = Settings::load_from(&path);
+        assert_eq!(loaded.sidebar_collapsed, false);
+        assert!(loaded.github_token.is_empty());
+        assert!(loaded.github_gist_id.is_empty());
     }
 }
