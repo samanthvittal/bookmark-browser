@@ -109,36 +109,127 @@ impl BookmarkStore {
     }
 }
 
-fn sidebar_html() -> String {
-    r#"<!DOCTYPE html>
+fn sidebar_html(store: &BookmarkStore) -> String {
+    let folders_json = serde_json::to_string(&store.folders).unwrap_or_else(|_| "[]".to_string());
+    format!(
+        r#"<!DOCTYPE html>
 <html>
 <head>
 <style>
-  :root {
+  :root {{
     --base: #1e1e2e;
     --mantle: #181825;
     --surface0: #313244;
+    --surface1: #45475a;
     --text: #cdd6f4;
     --subtext: #a6adc8;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
+    --accent: #89b4fa;
+  }}
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{
     background: var(--mantle);
     color: var(--text);
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 14px;
-    padding: 16px;
-    border-right: 1px solid var(--surface0);
     height: 100vh;
-  }
-  p { color: var(--subtext); }
+    overflow-y: auto;
+    border-right: 1px solid var(--surface0);
+  }}
+  #tree {{
+    padding: 8px 0;
+  }}
+  .folder-header {{
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--subtext);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }}
+  .folder-header:hover {{
+    background: var(--surface0);
+  }}
+  .folder-arrow {{
+    display: inline-block;
+    width: 16px;
+    font-size: 10px;
+    color: var(--subtext);
+  }}
+  .bookmark {{
+    display: block;
+    padding: 6px 12px 6px 32px;
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }}
+  .bookmark:hover {{
+    background: var(--surface0);
+  }}
+  .bookmark.active {{
+    background: var(--surface0);
+    color: var(--accent);
+  }}
 </style>
 </head>
 <body>
-  <p>Sidebar placeholder</p>
+<div id="tree"></div>
+<script>
+  let folders = {folders_json};
+  let activeUrl = null;
+
+  function renderBookmarks(data) {{
+    folders = data;
+    const tree = document.getElementById('tree');
+    tree.innerHTML = '';
+    folders.forEach(function(folder, fi) {{
+      const header = document.createElement('div');
+      header.className = 'folder-header';
+      header.onclick = function() {{ toggleFolder(fi); }};
+      const arrow = document.createElement('span');
+      arrow.className = 'folder-arrow';
+      arrow.textContent = folder.expanded ? '\u25BC' : '\u25B6';
+      const name = document.createElement('span');
+      name.textContent = folder.name;
+      header.appendChild(arrow);
+      header.appendChild(name);
+      tree.appendChild(header);
+
+      if (folder.expanded) {{
+        folder.bookmarks.forEach(function(bm) {{
+          const link = document.createElement('div');
+          link.className = 'bookmark' + (bm.url === activeUrl ? ' active' : '');
+          link.textContent = bm.name;
+          link.title = bm.url;
+          link.onclick = function() {{ navigate(bm.url); }};
+          tree.appendChild(link);
+        }});
+      }}
+    }});
+  }}
+
+  function navigate(url) {{
+    activeUrl = url;
+    window.ipc.postMessage(JSON.stringify({{ action: 'navigate', url: url }}));
+    renderBookmarks(folders);
+  }}
+
+  function toggleFolder(index) {{
+    window.ipc.postMessage(JSON.stringify({{ action: 'toggle_folder', folder_index: index }}));
+  }}
+
+  renderBookmarks(folders);
+</script>
 </body>
-</html>"#
-        .to_string()
+</html>"#,
+        folders_json = folders_json
+    )
 }
 
 fn welcome_html() -> String {
@@ -215,7 +306,7 @@ fn main() {
     let h = inner.height as f64 / scale;
 
     let sidebar_builder = WebViewBuilder::new()
-        .with_html(sidebar_html())
+        .with_html(sidebar_html(&store))
         .with_bounds(make_bounds(0.0, 0.0, SIDEBAR_WIDTH, h));
 
     let content_builder = WebViewBuilder::new()
