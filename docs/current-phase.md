@@ -1,6 +1,6 @@
 # Current Phase: 3 — Dual WebView Setup
 
-## Status: NOT STARTED
+## Status: COMPLETE
 
 ## Phase Dependencies
 - Phase 1 — Project Bootstrap (complete)
@@ -19,10 +19,10 @@ when the window is resized. This is the first phase that uses `wry`.
 
 ## Tasks
 
-- [ ] **3.1** — Define `SIDEBAR_WIDTH` constant (280.0 f64)
-- [ ] **3.2** — Create sidebar WebView with placeholder HTML ("Sidebar placeholder") using `WebViewBuilder::new_as_child`
-- [ ] **3.3** — Create content WebView with welcome page HTML (centered "Select a bookmark" message, dark theme using Catppuccin Mocha palette)
-- [ ] **3.4** — Handle `WindowEvent::Resized` — recalculate and call `set_bounds()` on both webviews
+- [x] **3.1** — Define `SIDEBAR_WIDTH` constant (280.0 f64)
+- [x] **3.2** — Create sidebar WebView with placeholder HTML ("Sidebar placeholder") using `WebViewBuilder`
+- [x] **3.3** — Create content WebView with welcome page HTML (centered "Select a bookmark" message, dark theme using Catppuccin Mocha palette)
+- [x] **3.4** — Handle `WindowEvent::Resized` — recalculate and call `set_bounds()` on both webviews
 - [ ] **3.5** — Verify both panes render and resize correctly (manual visual check)
 
 ## Test Checkpoint
