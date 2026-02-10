@@ -632,6 +632,40 @@ fn main() {
                         let _ = proxy.send_event(UserEvent::ToggleFolder(index as usize));
                     }
                 }
+                "add_folder" => {
+                    if let Some(name) = msg.get("name").and_then(|n| n.as_str()) {
+                        let _ = proxy.send_event(UserEvent::AddFolder(name.to_string()));
+                    }
+                }
+                "add_bookmark" => {
+                    if let (Some(fi), Some(name), Some(url)) = (
+                        msg.get("folder_index").and_then(|i| i.as_u64()),
+                        msg.get("name").and_then(|n| n.as_str()),
+                        msg.get("url").and_then(|u| u.as_str()),
+                    ) {
+                        let _ = proxy.send_event(UserEvent::AddBookmark {
+                            folder_index: fi as usize,
+                            name: name.to_string(),
+                            url: url.to_string(),
+                        });
+                    }
+                }
+                "delete_bookmark" => {
+                    if let (Some(fi), Some(bi)) = (
+                        msg.get("folder_index").and_then(|i| i.as_u64()),
+                        msg.get("bookmark_index").and_then(|i| i.as_u64()),
+                    ) {
+                        let _ = proxy.send_event(UserEvent::DeleteBookmark {
+                            folder_index: fi as usize,
+                            bookmark_index: bi as usize,
+                        });
+                    }
+                }
+                "delete_folder" => {
+                    if let Some(index) = msg.get("folder_index").and_then(|i| i.as_u64()) {
+                        let _ = proxy.send_event(UserEvent::DeleteFolder(index as usize));
+                    }
+                }
                 _ => {}
             }
         });
