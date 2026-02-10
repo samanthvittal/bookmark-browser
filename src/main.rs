@@ -33,6 +33,9 @@ enum UserEvent {
         bookmark_index: usize,
     },
     DeleteFolder(usize),
+    ReloadContent,
+    GoBack,
+    GoForward,
 }
 
 fn default_true() -> bool {
@@ -834,6 +837,15 @@ fn main() {
                         let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
                     }
                 }
+            }
+            Event::UserEvent(UserEvent::ReloadContent) => {
+                let _ = content.evaluate_script("location.reload()");
+            }
+            Event::UserEvent(UserEvent::GoBack) => {
+                let _ = content.evaluate_script("history.back()");
+            }
+            Event::UserEvent(UserEvent::GoForward) => {
+                let _ = content.evaluate_script("history.forward()");
             }
             _ => {}
         }
