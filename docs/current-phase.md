@@ -1,51 +1,61 @@
-# Current Phase: 4 — Sidebar HTML & IPC
+# Current Phase: 5 — Bookmark & Folder Management
 
-## Status: COMPLETE
+## Status: NOT STARTED
 
 ## Phase Dependencies
 - Phase 1 — Project Bootstrap (complete)
 - Phase 2 — Data Model & Persistence (complete)
 - Phase 3 — Dual WebView Setup (complete)
+- Phase 4 — Sidebar HTML & IPC (complete)
 
 ## Context
-Phase 3 gave us two side-by-side WebViews: a sidebar with placeholder text and a content pane
-with a welcome message. Now we wire the sidebar to actually render the bookmark tree from
-`BookmarkStore` data, handle click-to-navigate via IPC, and load URLs in the content pane.
-This phase introduces `UserEvent`, `EventLoopProxy`, the IPC handler, and the full sidebar
-HTML/CSS/JS generation function. After this phase the app will be a functional bookmark browser.
+Phase 4 gave us a functional bookmark browser: the sidebar renders the bookmark tree,
+clicking a bookmark navigates the content pane, and folders collapse/expand. Now we add
+CRUD operations — adding and deleting bookmarks and folders. This phase extends the
+`UserEvent` enum with `AddBookmark`, `AddFolder`, `DeleteBookmark`, and `DeleteFolder`
+variants, adds HTML modal dialogs in the sidebar for user input, and wires everything
+through IPC. After this phase the user can fully manage their bookmark collection.
 
 ## Key Files
-- `src/main.rs` — replace placeholder sidebar with `sidebar_html(store)`, add IPC handler,
-  add `UserEvent` enum, switch to `EventLoopBuilder::with_user_event()`, handle navigate events
+- `src/main.rs` — extend UserEvent enum, add event handlers, add modal HTML/JS to sidebar_html
 
 ## Tasks
 
-- [x] **4.1** — Define `UserEvent` enum with `Navigate(String)` variant and switch `EventLoop::new()` to `EventLoopBuilder::<UserEvent>::with_user_event().build()`
-- [x] **4.2** — Implement `fn sidebar_html(store: &BookmarkStore) -> String` that generates the full sidebar HTML with folder tree, Catppuccin Mocha dark theme, CSS variables, and JS functions (`renderBookmarks`, `navigate`, `toggleFolder`)
-- [x] **4.3** — Add IPC handler to sidebar WebView that parses JSON messages and sends `UserEvent`s via `EventLoopProxy`
-- [x] **4.4** — Handle `UserEvent::Navigate` in the event loop — call `content.load_url()` to load the clicked bookmark
-- [x] **4.5** — Handle `UserEvent::ToggleFolder` — update store, re-render sidebar via `evaluate_script`
-- [x] **4.6** — Verify clicking a bookmark loads the page in the content pane (manual test)
+- [ ] **5.1** — Extend `UserEvent` enum with `AddFolder(String)`, `AddBookmark { folder_index, name, url }`, `DeleteBookmark { folder_index, bookmark_index }`, `DeleteFolder(usize)` variants
+- [ ] **5.2** — Add "Add Bookmark" modal HTML/CSS to sidebar (name input, URL input, folder selector dropdown, Cancel/Add buttons)
+- [ ] **5.3** — Add "Add Folder" modal HTML/CSS to sidebar (name input, Cancel/Create buttons)
+- [ ] **5.4** — Implement `showAddBookmarkModal(fi?)`, `showAddFolderModal()`, `closeModals()`, `submitAddBookmark()`, `submitAddFolder()` JS functions with IPC messages
+- [ ] **5.5** — Add sidebar UI elements: "+" button on folder headers to add bookmark to that folder, bottom bar with "+ Folder" and "? Help" buttons, delete buttons on hover for bookmarks and folders
+- [ ] **5.6** — Extend IPC handler to parse `add_folder`, `add_bookmark`, `delete_bookmark`, `delete_folder` actions and send corresponding UserEvents
+- [ ] **5.7** — Handle `AddFolder` event — append new folder to store, save, refresh sidebar
+- [ ] **5.8** — Handle `AddBookmark` event — push bookmark to target folder, save, refresh sidebar
+- [ ] **5.9** — Handle `DeleteBookmark` event — remove bookmark from folder, save, refresh sidebar
+- [ ] **5.10** — Handle `DeleteFolder` event — remove entire folder from store, save, refresh sidebar
+- [ ] **5.11** — Add confirmation prompt in sidebar JS for delete operations before sending IPC
+- [ ] **5.12** — Handle Enter key to submit and Escape key to close in modal dialogs
 
 ## Test Checkpoint
 
-- [x] `cargo build` completes without errors
-- [x] `cargo clippy -- -D warnings` passes with no warnings
-- [x] `cargo fmt -- --check` reports no formatting issues
-- [x] `cargo test` passes (existing roundtrip test still works)
-- [x] Running `cargo run` shows the bookmark tree in the sidebar with folder names and bookmark names
-- [x] Clicking a bookmark loads the URL in the content pane
-- [x] Clicking a folder name toggles its collapse/expand state
-- [x] Folders show an expand/collapse arrow indicator
-- [x] Active bookmark is highlighted with accent color
+- [ ] `cargo build` completes without errors
+- [ ] `cargo clippy -- -D warnings` passes with no warnings
+- [ ] `cargo fmt -- --check` reports no formatting issues
+- [ ] `cargo test` passes (existing roundtrip test still works)
+- [ ] Clicking "+ Folder" in bottom bar opens Add Folder modal, submitting creates a new folder
+- [ ] Clicking "+" on a folder header opens Add Bookmark modal pre-selecting that folder
+- [ ] Submitting Add Bookmark modal adds the bookmark under the selected folder
+- [ ] Hovering a bookmark shows a delete button; clicking it (after confirmation) removes it
+- [ ] Hovering a folder shows a delete button; clicking it (after confirmation) removes the entire folder
+- [ ] Escape closes any open modal
+- [ ] Enter submits the active modal
+- [ ] Changes persist after closing and reopening the app
 
 ## Notes
-- Use `EventLoopBuilder::<UserEvent>::with_user_event().build()` instead of `EventLoop::new()`
-- The IPC handler receives a String; parse it as JSON with `serde_json::from_str::<serde_json::Value>`
-- `EventLoopProxy::send_event()` sends events from the IPC handler thread to the main event loop
-- After toggling a folder, serialize the updated store and push to sidebar via `evaluate_script("renderBookmarks(...)")`
-- Keep `content` accessible in the event loop closure for `load_url` calls
-- The sidebar JS uses `window.ipc.postMessage(JSON.stringify({...}))` to communicate with Rust
+- Modal dialogs are HTML overlays inside the sidebar WebView, not native OS dialogs
+- Use `position: fixed` overlay with backdrop for modals
+- Delete confirmation can use a simple inline "Are you sure?" prompt or a small confirmation modal
+- The folder selector in Add Bookmark modal should be a `<select>` element populated from the current folders array
+- All mutations follow the pattern: IPC → UserEvent → update store → save → evaluate_script(renderBookmarks)
+- The "? Help" button in the bottom bar is a placeholder for now — it will be wired in Phase 6 (Keyboard Shortcuts)
 
 ---
 
@@ -53,3 +63,4 @@ HTML/CSS/JS generation function. After this phase the app will be a functional b
 - Phase 1 — Project Bootstrap (completed 2026-02-10)
 - Phase 2 — Data Model & Persistence (completed 2026-02-10)
 - Phase 3 — Dual WebView Setup (completed 2026-02-10)
+- Phase 4 — Sidebar HTML & IPC (completed 2026-02-10)
