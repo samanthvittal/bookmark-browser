@@ -1,6 +1,6 @@
 # Current Phase: 4 — Sidebar HTML & IPC
 
-## Status: IN PROGRESS
+## Status: COMPLETE
 
 ## Phase Dependencies
 - Phase 1 — Project Bootstrap (complete)
@@ -25,7 +25,7 @@ HTML/CSS/JS generation function. After this phase the app will be a functional b
 - [x] **4.3** — Add IPC handler to sidebar WebView that parses JSON messages and sends `UserEvent`s via `EventLoopProxy`
 - [x] **4.4** — Handle `UserEvent::Navigate` in the event loop — call `content.load_url()` to load the clicked bookmark
 - [x] **4.5** — Handle `UserEvent::ToggleFolder` — update store, re-render sidebar via `evaluate_script`
-- [ ] **4.6** — Verify clicking a bookmark loads the page in the content pane (manual test)
+- [x] **4.6** — Verify clicking a bookmark loads the page in the content pane (manual test)
 
 ## Test Checkpoint
 
@@ -33,11 +33,11 @@ HTML/CSS/JS generation function. After this phase the app will be a functional b
 - [x] `cargo clippy -- -D warnings` passes with no warnings
 - [x] `cargo fmt -- --check` reports no formatting issues
 - [x] `cargo test` passes (existing roundtrip test still works)
-- [ ] Running `cargo run` shows the bookmark tree in the sidebar with folder names and bookmark names
-- [ ] Clicking a bookmark loads the URL in the content pane
-- [ ] Clicking a folder name toggles its collapse/expand state
-- [ ] Folders show an expand/collapse arrow indicator
-- [ ] Active bookmark is highlighted with accent color
+- [x] Running `cargo run` shows the bookmark tree in the sidebar with folder names and bookmark names
+- [x] Clicking a bookmark loads the URL in the content pane
+- [x] Clicking a folder name toggles its collapse/expand state
+- [x] Folders show an expand/collapse arrow indicator
+- [x] Active bookmark is highlighted with accent color
 
 ## Notes
 - Use `EventLoopBuilder::<UserEvent>::with_user_event().build()` instead of `EventLoop::new()`
