@@ -9,7 +9,11 @@ Organize bookmarks into folders in the left sidebar; click any bookmark to load 
 - **Two-pane layout** — sidebar with bookmark tree, content pane rendering real web pages
 - **Folder organization** — create, expand/collapse, and delete folders
 - **Bookmark management** — add and delete bookmarks via modals or keyboard shortcuts
+- **Collapsible sidebar** — toggle the sidebar to maximize content space (`Ctrl+B`)
+- **GitHub sync** — push/pull bookmarks to a GitHub repository for backup and cross-machine sync
+- **Auto-sync** — bookmark mutations automatically sync in the background (skip-if-busy)
 - **Persistent storage** — bookmarks saved as human-readable JSON in `~/.config/bookmarks-browser/`
+- **Settings** — configure GitHub token and repository via in-app settings modal
 - **Dark theme** — Catppuccin Mocha color palette
 - **Keyboard shortcuts** — full keyboard control (see below)
 - **Tiny binary** — under 1 MB release build with LTO and strip
@@ -64,6 +68,8 @@ cargo build --release
 | `Ctrl+N` | Add new bookmark |
 | `Ctrl+G` | Add new folder |
 | `Ctrl+B` | Toggle sidebar |
+| `Ctrl+U` | Push bookmarks to GitHub |
+| `Ctrl+I` | Pull bookmarks from GitHub |
 | `F1` / `Ctrl+/` | Show keyboard shortcuts |
 | `F5` | Reload content pane |
 | `Ctrl+[` | Navigate back |
@@ -71,20 +77,21 @@ cargo build --release
 | `Ctrl+Q` | Quit |
 | `Escape` | Close dialog |
 
+## GitHub Sync
+
+Bookmarks can be synced to a GitHub repository for backup and restoring on a fresh install.
+
+1. Create a GitHub repository (e.g. `my-bookmarks`)
+2. Generate a [personal access token](https://github.com/settings/tokens) with `repo` scope
+3. Open **Settings** in the sidebar, enter your token and repository (`owner/repo`)
+4. Use **Push** to upload or **Pull** to download bookmarks
+
+Bookmark mutations (add/delete folders and bookmarks) automatically trigger a background sync. If a sync is already in progress, additional mutations are queued silently to avoid API spam.
+
 ## Data Storage
 
-Bookmarks are stored in `~/.config/bookmarks-browser/bookmarks.json` as pretty-printed JSON. On first launch, sample bookmarks are created automatically.
-
-## Upcoming Features
-
-- Drag-and-drop reordering of bookmarks and folders
-- Import/export bookmarks (HTML bookmark format or JSON)
-- Search/filter bar in sidebar (`Ctrl+F`)
-- Resizable sidebar width via drag handle
-- Tabs in content pane for opening multiple bookmarks
-- Favicon fetching and display next to bookmark names
-- Keyboard navigation within the sidebar tree (arrow keys)
-- Custom CSS injection for reader mode
+- **Bookmarks**: `~/.config/bookmarks-browser/bookmarks.json` — pretty-printed JSON, created with sample bookmarks on first launch
+- **Settings**: `~/.config/bookmarks-browser/settings.json` — GitHub token, repository, and UI preferences
 
 ## Acknowledgements
 

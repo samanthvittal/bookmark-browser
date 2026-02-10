@@ -1,4 +1,6 @@
 /target
+.claude/
+docs/
 *.swp
 *.swo
 *~
