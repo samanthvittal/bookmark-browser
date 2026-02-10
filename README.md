@@ -31,7 +31,22 @@ sudo pacman -S webkit2gtk-4.1
 sudo apt install libwebkit2gtk-4.1-dev
 ```
 
-## Build & Run
+## Install
+
+```bash
+# Clone and install to ~/.local/
+git clone https://github.com/user/bookmark-browser.git
+cd bookmark-browser
+./install.sh
+```
+
+This builds a release binary and installs it along with the desktop entry and icon to `~/.local/`. Make sure `~/.local/bin` is in your `PATH`. To uninstall:
+
+```bash
+./uninstall.sh
+```
+
+## Build & Run (Development)
 
 ```bash
 # Debug build
@@ -47,7 +62,8 @@ cargo build --release
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+N` | Add new bookmark |
-| `Ctrl+Shift+N` | Add new folder |
+| `Ctrl+G` | Add new folder |
+| `Ctrl+B` | Toggle sidebar |
 | `F1` / `Ctrl+/` | Show keyboard shortcuts |
 | `F5` | Reload content pane |
 | `Ctrl+[` | Navigate back |
