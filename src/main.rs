@@ -320,6 +320,8 @@ fn sidebar_html(store: &BookmarkStore) -> String {
   .modal select {{
     appearance: none;
     -webkit-appearance: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a6adc8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 8px center;
@@ -419,7 +421,6 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     <table class="help-table">
       <tr><td class="help-key">Ctrl+N</td><td>Add bookmark</td></tr>
       <tr><td class="help-key">Ctrl+Shift+N</td><td>Add folder</td></tr>
-      <tr><td class="help-key">Ctrl+D</td><td>Delete bookmark</td></tr>
       <tr><td class="help-key">F5</td><td>Reload page</td></tr>
       <tr><td class="help-key">Ctrl+[</td><td>Navigate back</td></tr>
       <tr><td class="help-key">Ctrl+]</td><td>Navigate forward</td></tr>
@@ -524,6 +525,10 @@ fn sidebar_html(store: &BookmarkStore) -> String {
   }}
 
   function showAddBookmarkModal(fi) {{
+    if (folders.length === 0) {{
+      alert('Create a folder first before adding bookmarks.');
+      return;
+    }}
     const select = document.getElementById('bmFolder');
     select.innerHTML = '';
     folders.forEach(function(folder, i) {{
