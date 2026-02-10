@@ -4,8 +4,9 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tao::{
     dpi::LogicalSize,
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, WindowEvent},
     event_loop::{ControlFlow, EventLoopBuilder},
+    keyboard::{Key, ModifiersState},
     window::WindowBuilder,
 };
 use wry::dpi::{LogicalPosition, LogicalSize as WryLogicalSize};
@@ -758,10 +759,48 @@ fn main() {
         (sidebar, content)
     };
 
+    let mut modifiers = ModifiersState::empty();
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
         match event {
+            Event::WindowEvent {
+                event: WindowEvent::ModifiersChanged(new_modifiers),
+                ..
+            } => {
+                modifiers = new_modifiers;
+            }
+            Event::WindowEvent {
+                event:
+                    WindowEvent::KeyboardInput {
+                        event: ref key_event,
+                        ..
+                    },
+                ..
+            } if key_event.state == ElementState::Pressed => {
+                let ctrl = modifiers.control_key();
+                let shift = modifiers.shift_key();
+                let key = &key_event.logical_key;
+
+                if ctrl && shift && *key == Key::Character("N") {
+                    let _ = sidebar.evaluate_script("showAddFolderModal()");
+                } else if ctrl && !shift && *key == Key::Character("n") {
+                    let _ = sidebar.evaluate_script("showAddBookmarkModal()");
+                } else if *key == Key::F1 || (ctrl && *key == Key::Character("/")) {
+                    let _ = sidebar.evaluate_script("showHelpModal()");
+                } else if ctrl && *key == Key::Character("q") {
+                    *control_flow = ControlFlow::Exit;
+                } else if *key == Key::F5 {
+                    let _ = content.evaluate_script("location.reload()");
+                } else if ctrl && *key == Key::Character("[") {
+                    let _ = content.evaluate_script("history.back()");
+                } else if ctrl && *key == Key::Character("]") {
+                    let _ = content.evaluate_script("history.forward()");
+                } else if *key == Key::Escape {
+                    let _ = sidebar.evaluate_script("closeModals()");
+                }
+            }
             Event::WindowEvent {
                 event: WindowEvent::Resized(new_size),
                 ..
