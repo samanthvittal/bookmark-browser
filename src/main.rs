@@ -135,7 +135,7 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     --surface2: #585b70;
     --text: #cdd6f4;
     --subtext: #a6adc8;
-    --accent: #89b4fa;
+    --accent: #cba6f7;
     --red: #f38ba8;
     --green: #a6e3a1;
     --overlay: rgba(0, 0, 0, 0.5);
@@ -252,9 +252,9 @@ fn sidebar_html(store: &BookmarkStore) -> String {
   }}
   .bar-btn {{
     flex: 1;
-    background: var(--surface0);
-    border: none;
-    color: var(--subtext);
+    background: var(--surface1);
+    border: 1px solid var(--surface2);
+    color: var(--text);
     padding: 6px 8px;
     border-radius: 4px;
     cursor: pointer;
@@ -262,7 +262,7 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     font-family: inherit;
   }}
   .bar-btn:hover {{
-    background: var(--surface1);
+    background: var(--surface2);
     color: var(--text);
   }}
   .modal-overlay {{
@@ -306,6 +306,18 @@ fn sidebar_html(store: &BookmarkStore) -> String {
     font-size: 13px;
     font-family: inherit;
     outline: none;
+  }}
+  .modal select {{
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a6adc8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px;
+  }}
+  .modal select option {{
+    background: var(--surface0);
+    color: var(--text);
   }}
   .modal input:focus, .modal select:focus {{
     border-color: var(--accent);
@@ -546,7 +558,7 @@ fn welcome_html() -> String {
     --mantle: #181825;
     --text: #cdd6f4;
     --subtext: #a6adc8;
-    --accent: #89b4fa;
+    --accent: #cba6f7;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
