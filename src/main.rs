@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tao::{
@@ -20,7 +20,6 @@ use wry::WebViewBuilderExtUnix;
 const SIDEBAR_WIDTH: f64 = 280.0;
 
 #[derive(Debug)]
-#[allow(dead_code)]
 enum UserEvent {
     Navigate(String),
     ToggleFolder(usize),
@@ -35,9 +34,6 @@ enum UserEvent {
         bookmark_index: usize,
     },
     DeleteFolder(usize),
-    ReloadContent,
-    GoBack,
-    GoForward,
 }
 
 fn default_true() -> bool {
@@ -104,7 +100,7 @@ impl BookmarkStore {
         Self::load_from(&config_path())
     }
 
-    fn load_from(path: &PathBuf) -> BookmarkStore {
+    fn load_from(path: &Path) -> BookmarkStore {
         fs::read_to_string(path)
             .ok()
             .and_then(|data| serde_json::from_str(&data).ok())
@@ -115,7 +111,7 @@ impl BookmarkStore {
         self.save_to(&config_path())
     }
 
-    fn save_to(&self, path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    fn save_to(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
@@ -882,15 +878,6 @@ fn main() {
                         let _ = sidebar.evaluate_script(&format!("renderBookmarks({json})"));
                     }
                 }
-            }
-            Event::UserEvent(UserEvent::ReloadContent) => {
-                let _ = content.evaluate_script("location.reload()");
-            }
-            Event::UserEvent(UserEvent::GoBack) => {
-                let _ = content.evaluate_script("history.back()");
-            }
-            Event::UserEvent(UserEvent::GoForward) => {
-                let _ = content.evaluate_script("history.forward()");
             }
             _ => {}
         }
